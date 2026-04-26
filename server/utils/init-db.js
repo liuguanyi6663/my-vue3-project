@@ -325,6 +325,25 @@ const initDatabase = async () => {
         ('刷单'), ('兼职'), ('赚钱'), ('色情'), ('赌博'), ('政治')`)
     }
 
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS national_lines (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        year YEAR NOT NULL COMMENT '年份',
+        region ENUM('A', 'B') NOT NULL COMMENT 'A区/B区',
+        category ENUM('academic', 'professional') NOT NULL COMMENT '学术型/专业型',
+        subject_type VARCHAR(50) NOT NULL COMMENT '学科门类',
+        total_score INT NOT NULL COMMENT '总分线',
+        politics_score INT DEFAULT NULL COMMENT '政治线',
+        foreign_score INT DEFAULT NULL COMMENT '外语线',
+        subject1_score INT DEFAULT NULL COMMENT '业务课一线',
+        subject2_score INT DEFAULT NULL COMMENT '业务课二线',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_year (year),
+        INDEX idx_region_category (region, category)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='国家线数据表'
+    `)
+
     console.log('✅ 数据库表初始化完成')
   } catch (err) {
     console.error('❌ 数据库初始化失败:', err.message)

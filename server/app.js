@@ -10,6 +10,7 @@ const studyRoutes = require('./routes/study')
 const adminRoutes = require('./routes/admin')
 const messageRoutes = require('./routes/message')
 const recordRoutes = require('./routes/record')
+const nationalLineRoutes = require('./routes/national-line')
 
 const app = express()
 
@@ -42,6 +43,7 @@ app.use('/api/study', studyRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/message', messageRoutes)
 app.use('/api/record', recordRoutes)
+app.use('/api/national-line', nationalLineRoutes)
 
 app.get('/', (req, res) => {
   res.json({ code: 200, msg: '考研小程序API服务运行中', data: null })

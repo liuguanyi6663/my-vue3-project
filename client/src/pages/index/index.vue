@@ -55,6 +55,10 @@
             <text class="entry-icon">🌳</text>
             <text class="entry-label">匿名树洞</text>
           </view>
+          <view class="entry-item" @click="navigateTo('/pages/national-line/index')">
+            <text class="entry-icon">📈</text>
+            <text class="entry-label">国家线</text>
+          </view>
         </view>
       </scroll-view>
     </view>

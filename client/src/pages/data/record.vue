@@ -151,6 +151,18 @@
             maxlength="6"
           />
         </view>
+
+        <view class="total-score-row">
+          <view class="total-score-info">
+            <text class="total-score-label">总分</text>
+            <text class="total-score-limit">满分500</text>
+          </view>
+          <view class="total-score-right">
+            <text class="total-score-value" v-if="totalScore !== null">{{ totalScore }} 分</text>
+            <text class="total-score-placeholder" v-else>未输入成绩</text>
+            <button class="calc-btn" @click="handleCalcTotal">计算总分</button>
+          </view>
+        </view>
       </view>
 
       <!-- 目标院校 -->
@@ -250,6 +262,30 @@ const form = ref({
 const submitting = ref(false)
 const isEdit = ref(false)
 const editId = ref(null)
+
+const totalScore = computed(() => {
+  const math = parseFloat(form.value.math_score)
+  const english = parseFloat(form.value.english_score)
+  const politics = parseFloat(form.value.politics_score)
+  const professional = parseFloat(form.value.professional_score)
+  const scores = [math, english, politics, professional]
+  if (scores.every(s => isNaN(s))) return null
+  return scores.reduce((sum, s) => sum + (isNaN(s) ? 0 : s), 0)
+})
+
+const handleCalcTotal = () => {
+  const math = parseFloat(form.value.math_score)
+  const english = parseFloat(form.value.english_score)
+  const politics = parseFloat(form.value.politics_score)
+  const professional = parseFloat(form.value.professional_score)
+  const scores = [math, english, politics, professional]
+  if (scores.every(s => isNaN(s))) {
+    uni.showToast({ title: '请先输入各科成绩', icon: 'none' })
+    return
+  }
+  const total = scores.reduce((sum, s) => sum + (isNaN(s) ? 0 : s), 0)
+  uni.showToast({ title: `总分为 ${total} 分`, icon: 'none', duration: 2000 })
+}
 
 const onYearChange = (e) => {
   yearIndex.value = e.detail.value
@@ -591,6 +627,60 @@ const handleSubmit = async () => {
 .score-limit {
   font-size: 24rpx;
   color: #999;
+}
+
+.total-score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 0 0;
+  border-top: 1rpx dashed #e0e0e0;
+  margin-top: 24rpx;
+}
+
+.total-score-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.total-score-label {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #c53030;
+}
+
+.total-score-limit {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.total-score-right {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.total-score-value {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #c53030;
+}
+
+.total-score-placeholder {
+  font-size: 26rpx;
+  color: #ccc;
+}
+
+.calc-btn {
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
+  color: #fff;
+  font-size: 24rpx;
+  padding: 0 28rpx;
+  height: 60rpx;
+  line-height: 60rpx;
+  border-radius: 30rpx;
+  border: none;
 }
 
 .placeholder {

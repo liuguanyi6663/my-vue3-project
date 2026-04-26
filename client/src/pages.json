@@ -181,6 +181,18 @@
       "style": {
         "navigationBarTitleText": "通知详情"
       }
+    },
+    {
+      "path": "pages/national-line/index",
+      "style": {
+        "navigationBarTitleText": "国家线"
+      }
+    },
+    {
+      "path": "pages/admin/national-line",
+      "style": {
+        "navigationBarTitleText": "国家线数据管理"
+      }
     }
   ],
   "globalStyle": {

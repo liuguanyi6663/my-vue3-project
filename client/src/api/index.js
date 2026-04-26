@@ -160,3 +160,14 @@ export const messageApi = {
   send: (data) => post('/message/send', data),
   getUnreadCount: () => get('/message/unread-count')
 }
+
+export const nationalLineApi = {
+  getList: (params) => get('/national-line/list', params),
+  getYears: () => get('/national-line/years'),
+  getAdminList: (params) => get('/national-line/admin/list', params),
+  add: (data) => post('/national-line/admin/add', data),
+  update: (id, data) => put(`/national-line/admin/update/${id}`, data),
+  delete: (id) => del(`/national-line/admin/delete/${id}`),
+  batchSave: (data) => post('/national-line/admin/batch', data),
+  batchDeleteByYear: (year, params) => del(`/national-line/admin/batch-by-year/${year}`, params)
+}
