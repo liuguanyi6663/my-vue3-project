@@ -1,0 +1,223 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/materials/index",
+      "style": {
+        "navigationBarTitleText": "资料中心"
+      }
+    },
+    {
+      "path": "pages/materials/detail",
+      "style": {
+        "navigationBarTitleText": "资料详情"
+      }
+    },
+    {
+      "path": "pages/materials/upload",
+      "style": {
+        "navigationBarTitleText": "上传资料"
+      }
+    },
+    {
+      "path": "pages/forum/index",
+      "style": {
+        "navigationBarTitleText": "考研论坛",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/forum/detail",
+      "style": {
+        "navigationBarTitleText": "帖子详情"
+      }
+    },
+    {
+      "path": "pages/forum/post",
+      "style": {
+        "navigationBarTitleText": "发布帖子"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/mine/checkin",
+      "style": {
+        "navigationBarTitleText": "学习打卡"
+      }
+    },
+    {
+      "path": "pages/mine/favorites",
+      "style": {
+        "navigationBarTitleText": "我的收藏"
+      }
+    },
+    {
+      "path": "pages/mine/downloads",
+      "style": {
+        "navigationBarTitleText": "下载记录"
+      }
+    },
+    {
+      "path": "pages/mine/uploads",
+      "style": {
+        "navigationBarTitleText": "我的上传"
+      }
+    },
+    {
+      "path": "pages/mine/profile",
+      "style": {
+        "navigationBarTitleText": "个人信息"
+      }
+    },
+    {
+      "path": "pages/mine/user-profile",
+      "style": {
+        "navigationBarTitleText": "用户主页"
+      }
+    },
+    {
+      "path": "pages/mine/chat",
+      "style": {
+        "navigationBarTitleText": "聊天"
+      }
+    },
+    {
+      "path": "pages/mine/messages",
+      "style": {
+        "navigationBarTitleText": "我的消息"
+      }
+    },
+    {
+      "path": "pages/mine/my-kaoyan",
+      "style": {
+        "navigationBarTitleText": "我的考研信息"
+      }
+    },
+    {
+      "path": "pages/study/plan",
+      "style": {
+        "navigationBarTitleText": "今日计划"
+      }
+    },
+    {
+      "path": "pages/data/dashboard",
+      "style": {
+        "navigationBarTitleText": "考研数据大屏"
+      }
+    },
+    {
+      "path": "pages/data/record",
+      "style": {
+        "navigationBarTitleText": "考研信息录入"
+      }
+    },
+    {
+      "path": "pages/tools/interview",
+      "style": {
+        "navigationBarTitleText": "复试工具箱"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/admin/index",
+      "style": {
+        "navigationBarTitleText": "管理后台"
+      }
+    },
+    {
+      "path": "pages/admin/screen",
+      "style": {
+        "navigationBarTitleText": "大屏管理"
+      }
+    },
+    {
+      "path": "pages/admin/reports",
+      "style": {
+        "navigationBarTitleText": "举报受理"
+      }
+    },
+    {
+      "path": "pages/admin/kaoyan-audit",
+      "style": {
+        "navigationBarTitleText": "考研信息审批"
+      }
+    },
+    {
+      "path": "pages/admin/users",
+      "style": {
+        "navigationBarTitleText": "用户列表"
+      }
+    },
+    {
+      "path": "pages/admin/notice",
+      "style": {
+        "navigationBarTitleText": "信息发布"
+      }
+    },
+    {
+      "path": "pages/notifications/index",
+      "style": {
+        "navigationBarTitleText": "通知公告"
+      }
+    },
+    {
+      "path": "pages/notifications/detail",
+      "style": {
+        "navigationBarTitleText": "通知详情"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#fff",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#FFFFFF",
+    "selectedColor": "#FF3B30",
+    "borderStyle": "black",
+    "backgroundColor": "#333333",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/materials/index",
+        "text": "资料中心",
+        "iconPath": "static/tabbar/material.png",
+        "selectedIconPath": "static/tabbar/material-active.png"
+      },
+      {
+        "pagePath": "pages/forum/index",
+        "text": "论坛",
+        "iconPath": "static/tabbar/forum.png",
+        "selectedIconPath": "static/tabbar/forum-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
+    ]
+  }
+}
