@@ -111,6 +111,14 @@ import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { materialApi } from '@/api/index'
 
+const FIXED_CATEGORIES = [
+  { id: 1, name: '公共课' },
+  { id: 5, name: '专业课' },
+  { id: 6, name: '真题' },
+  { id: 7, name: '学长笔记' },
+  { id: 8, name: '复试资料' }
+]
+
 const keyword = ref('')
 const categories = ref([])
 const currentCategory = ref(0)
@@ -124,9 +132,14 @@ const hasMore = ref(true)
 const loadCategories = async () => {
   try {
     const res = await materialApi.getCategories()
-    categories.value = res.data || []
+    const apiCategories = res.data || []
+    categories.value = FIXED_CATEGORIES.map((item) => {
+      const matched = apiCategories.find((apiItem) => Number(apiItem.id) === item.id)
+      return matched ? { ...matched, name: item.name } : item
+    })
   } catch (e) {
     console.error('加载分类失败:', e)
+    categories.value = FIXED_CATEGORIES
   }
 }
 

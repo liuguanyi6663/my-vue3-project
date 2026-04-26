@@ -76,8 +76,8 @@
     <view class="notice card">
       <text class="notice-title">上传须知</text>
       <text class="notice-text">1. 请确保上传资料合法合规，不侵犯他人版权。</text>
-      <text class="notice-text">2. 上传成功后可在“我的上传”中查看记录。</text>
-      <text class="notice-text">3. 公开展示以资料中心列表和审核状态为准。</text>
+      <text class="notice-text">2. 上传时请先选择所属分类，资料会显示到对应分类下。</text>
+      <text class="notice-text">3. 上传成功后可在“我的上传”中查看记录。</text>
       <text class="notice-text">4. 禁止上传广告、引流或违规内容。</text>
     </view>
 
@@ -89,6 +89,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { materialApi } from '@/api/index'
 import { getCurrentYear } from '@/utils/date'
+
+const FIXED_CATEGORIES = [
+  { id: 1, name: '公共课', parent_id: 0, type: 'public' },
+  { id: 5, name: '专业课', parent_id: 0, type: 'major' },
+  { id: 6, name: '真题', parent_id: 0, type: 'exam' },
+  { id: 7, name: '学长笔记', parent_id: 0, type: 'notes' },
+  { id: 8, name: '复试资料', parent_id: 0, type: 'interview' }
+]
 
 const currentYear = getCurrentYear()
 
@@ -113,31 +121,21 @@ const canSubmit = computed(() => {
 const loadCategories = async () => {
   try {
     const res = await materialApi.getCategories()
-    if (res.data?.length) {
-      categories.value = res.data
-      buildCategoryList()
-      return
-    }
+    const apiCategories = res.data || []
+    categories.value = FIXED_CATEGORIES.map((item) => {
+      const matched = apiCategories.find((apiItem) => Number(apiItem.id) === item.id)
+      return matched ? { ...matched, name: item.name } : item
+    })
   } catch (e) {
     console.error('加载分类失败，使用默认分类:', e)
+    categories.value = FIXED_CATEGORIES
   }
 
-  useDefaultCategories()
+  buildCategoryList()
 }
 
 const buildCategoryList = () => {
   parentCategories.value = categories.value.filter((item) => Number(item.parent_id) === 0)
-}
-
-const useDefaultCategories = () => {
-  categories.value = [
-    { id: 1, name: '公共课', parent_id: 0, type: 'public' },
-    { id: 5, name: '专业课', parent_id: 0, type: 'major' },
-    { id: 6, name: '真题', parent_id: 0, type: 'exam' },
-    { id: 7, name: '学长笔记', parent_id: 0, type: 'notes' },
-    { id: 8, name: '复试资料', parent_id: 0, type: 'interview' }
-  ]
-  buildCategoryList()
 }
 
 const onCategoryChange = (e) => {
@@ -157,6 +155,7 @@ const chooseFile = () => {
       success: (res) => {
         const file = res.tempFiles?.[0]
         if (!file) return
+
         uploadedFile.value = {
           name: file.name,
           size: file.size || 0,
