@@ -2,10 +2,10 @@ const express = require('express')
 const router = express.Router()
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
-const { auth } = require('../middleware/auth')
+const { auth, optionalAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 
-router.get('/posts', async (req, res) => {
+router.get('/posts', optionalAuth, async (req, res) => {
   try {
     const { category, keyword, page = 1, pageSize = 10, sort = 'created_at' } = req.query
     const pageNum = parseInt(page) || 1
@@ -83,7 +83,7 @@ router.get('/posts', async (req, res) => {
   }
 })
 
-router.get('/posts/:id', async (req, res) => {
+router.get('/posts/:id', optionalAuth, async (req, res) => {
   try {
     const posts = await db.query(
       `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,

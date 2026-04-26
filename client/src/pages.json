@@ -189,10 +189,10 @@
     "backgroundColor": "#f5f5f5"
   },
   "tabBar": {
-    "color": "#FFFFFF",
+    "color": "#999999",
     "selectedColor": "#FF3B30",
     "borderStyle": "black",
-    "backgroundColor": "#333333",
+    "backgroundColor": "#ffffff",
     "list": [
       {
         "pagePath": "pages/index/index",

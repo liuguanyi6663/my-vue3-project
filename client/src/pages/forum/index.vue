@@ -78,6 +78,9 @@
           <text class="footer-item">
             <text>💬 {{ item.comment_count }}</text>
           </text>
+          <text class="footer-item delete-btn" v-if="item.canDelete" @click.stop="deletePost(item)">
+            <text>🗑️ 删除</text>
+          </text>
         </view>
       </view>
 
@@ -262,6 +265,28 @@ const goPost = () => {
   uni.navigateTo({ url })
 }
 
+const deletePost = async (item) => {
+  uni.showModal({
+    title: '确认删除',
+    content: '删除后无法恢复，确定要删除这个帖子吗？',
+    success: async (modalRes) => {
+      if (!modalRes.confirm) return
+      try {
+        const res = await forumApi.deletePost(item.id)
+        if (res.code === 200) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          postList.value = postList.value.filter(p => p.id !== item.id)
+        } else {
+          uni.showToast({ title: res.msg || '删除失败', icon: 'none' })
+        }
+      } catch (e) {
+        console.error('删除帖子失败:', e)
+        uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    }
+  })
+}
+
 const formatTime = (timeStr) => formatMessageTime(timeStr)
 
 // 处理图片 URL，确保完整路径
@@ -437,6 +462,10 @@ onShow(() => {
 }
 
 .footer-item .liked {
+  color: #ff3b30;
+}
+
+.footer-item.delete-btn {
   color: #ff3b30;
 }
 

@@ -1,24 +1,5 @@
 <template>
   <view class="page">
-    <view class="stats-bar card">
-      <view class="stat-item" @click="filterByStatus('')">
-        <text class="stat-num" :class="{ active: currentFilter === '' }">{{ stats.total || 0 }}</text>
-        <text class="stat-label">全部</text>
-      </view>
-      <view class="stat-item" @click="filterByStatus('approved')">
-        <text class="stat-num approved" :class="{ active: currentFilter === 'approved' }">{{ stats.approved_count || 0 }}</text>
-        <text class="stat-label">已通过</text>
-      </view>
-      <view class="stat-item" @click="filterByStatus('pending')">
-        <text class="stat-num pending" :class="{ active: currentFilter === 'pending' }">{{ stats.pending_count || 0 }}</text>
-        <text class="stat-label">审核中</text>
-      </view>
-      <view class="stat-item" @click="filterByStatus('rejected')">
-        <text class="stat-num rejected" :class="{ active: currentFilter === 'rejected' }">{{ stats.rejected_count || 0 }}</text>
-        <text class="stat-label">未通过</text>
-      </view>
-    </view>
-
     <view class="list-section">
       <view v-for="item in uploadList" :key="item.id" class="upload-item card">
         <view class="item-header" @click="goDetail(item)">
