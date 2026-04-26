@@ -7,6 +7,36 @@ const { success, error, pageSuccess } = require('../utils/response')
 const { auth, optionalAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 
+const getStoredFileType = (file) => {
+  const ext = path.extname(file.originalname || '').toLowerCase().replace('.', '')
+  if (ext) return ext
+
+  const mime = (file.mimetype || '').toLowerCase()
+  const mimeMap = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+  }
+
+  return mimeMap[mime] || 'unknown'
+}
+
+const normalizeYear = (year) => {
+  if (year === undefined || year === null) return null
+
+  const value = String(year).trim()
+  if (!value) return null
+  if (!/^\d{4}$/.test(value)) return null
+
+  const num = Number(value)
+  if (num < 1901 || num > 2155) return null
+
+  return num
+}
+
 router.get('/categories', async (req, res) => {
   try {
     const { type, college } = req.query
@@ -51,20 +81,24 @@ router.get('/list', async (req, res) => {
                LEFT JOIN material_categories mc ON m.category_id=mc.id 
                LEFT JOIN users u ON m.uploader_id=u.id 
                WHERE m.audit_status='approved' AND m.status=1`
-    
+    const listParams = []
+
     if (category_id) {
-      sql += ` AND m.category_id=${category_id}`
+      sql += ' AND m.category_id=?'
+      listParams.push(category_id)
     }
     if (keyword) {
-      sql += ` AND (m.title LIKE '%${keyword}%' OR m.description LIKE '%${keyword}%')`
+      sql += ' AND (m.title LIKE ? OR m.description LIKE ?)'
+      listParams.push(`%${keyword}%`, `%${keyword}%`)
     }
     
     const sortOrder = sort === 'download_count' ? 'm.download_count DESC' : 
                       sort === 'like_count' ? 'm.like_count DESC' : 
                       'm.created_at DESC'
-    sql += ` ORDER BY ${sortOrder} LIMIT ${size} OFFSET ${offset}`
-    
-    const list = await db.query(sql)
+    sql += ` ORDER BY ${sortOrder} LIMIT ? OFFSET ?`
+    listParams.push(size, offset)
+
+    const list = await db.query(sql, listParams)
     
     let countSql = `SELECT COUNT(*) as total FROM materials m WHERE m.audit_status='approved' AND m.status=1`
     const countParams = []
@@ -201,18 +235,36 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     if (!category_id || !title || !req.file) {
       return res.json(error('请填写完整信息并上传文件'))
     }
+
+    const fileType = getStoredFileType(req.file)
+    const normalizedYear = normalizeYear(year)
     
+    console.log('资料上传请求:', {
+      userId: req.user && req.user.id,
+      category_id,
+      title,
+      year,
+      normalizedYear,
+      file: req.file ? {
+        originalname: req.file.originalname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        fileType
+      } : null
+    })
+
     const result = await db.query(
-      `INSERT INTO materials (category_id, title, description, file_name, file_path, file_size, file_type, uploader_id, year, audit_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved')`,
+      `INSERT INTO materials (category_id, title, description, file_name, file_path, file_size, file_type, uploader_id, year, audit_status, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 1)`,
       [category_id, title, description || '', req.file.originalname, '/uploads/' + req.file.filename,
-       req.file.size, req.file.mimetype, req.user.id, year || null]
+       req.file.size, fileType, req.user.id, normalizedYear]
     )
     
     res.json(success({ id: result.insertId }, '上传成功'))
   } catch (err) {
-    console.error(err)
-    res.json(error('上传失败'))
+    console.error('资料上传失败:', err)
+    res.json(error(err.message || '上传失败'))
   }
 })
 

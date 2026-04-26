@@ -20,11 +20,7 @@
     </view>
 
     <view class="list-section">
-      <view 
-        class="upload-item card" 
-        v-for="(item, index) in uploadList" 
-        :key="index"
-      >
+      <view v-for="item in uploadList" :key="item.id" class="upload-item card">
         <view class="item-header" @click="goDetail(item)">
           <view class="item-info">
             <text class="item-title">{{ item.title }}</text>
@@ -42,37 +38,36 @@
         </view>
 
         <view class="item-stats" @click="goDetail(item)">
-          <text class="stats-text">👁 {{ item.view_count || 0 }}</text>
-          <text class="stats-text">📥 {{ item.download_count || 0 }}</text>
-          <text class="stats-text">❤️ {{ item.like_count || 0 }}</text>
-          <text class="stats-text" v-if="item.avg_score > 0">⭐ {{ item.avg_score }}</text>
+          <text class="stats-text">浏览 {{ item.view_count || 0 }}</text>
+          <text class="stats-text">下载 {{ item.download_count || 0 }}</text>
+          <text class="stats-text">点赞 {{ item.like_count || 0 }}</text>
+          <text v-if="item.avg_score > 0" class="stats-text">评分 {{ item.avg_score }}</text>
         </view>
 
         <view class="item-actions">
           <view class="action-btn" @click="goDetail(item)">
-            <text class="action-icon">👁</text>
-            <text class="action-label">查看</text>
+            <text class="action-icon">查看</text>
           </view>
           <view class="action-btn" v-if="item.audit_status === 'approved'" @click="downloadFile(item)">
-            <text class="action-icon">📥</text>
-            <text class="action-label">下载</text>
+            <text class="action-icon">下载</text>
           </view>
           <view class="action-btn delete" @click="confirmDelete(item)">
-            <text class="action-icon">🗑️</text>
-            <text class="action-label">删除</text>
+            <text class="action-icon">删除</text>
           </view>
         </view>
       </view>
 
       <view v-if="uploadList.length === 0 && !loading" class="empty-state">
-        <text class="empty-icon">📤</text>
+        <text class="empty-icon">📄</text>
         <text class="empty-text" v-if="currentFilter">暂无{{ getAuditLabel(currentFilter) }}的资料</text>
         <text class="empty-text" v-else>暂无上传的资料</text>
         <text class="empty-hint">点击右下角按钮上传你的第一份资料吧~</text>
       </view>
     </view>
 
-    <view v-if="loading" class="loading-tip"><text>加载中...</text></view>
+    <view v-if="loading" class="loading-tip">
+      <text>加载中...</text>
+    </view>
 
     <view v-if="hasMore && !loading" class="load-more" @click="loadMore">
       <text>加载更多</text>
@@ -118,7 +113,6 @@ const loadUploads = async (reset = false) => {
     const token = uni.getStorageSync('token')
     if (!token) {
       uploadList.value = []
-      loading.value = false
       return
     }
 
@@ -128,18 +122,14 @@ const loadUploads = async (reset = false) => {
     }
 
     const res = await materialApi.getMyUploads(params)
-    if (res.code === 200) {
-      const list = res.data?.list || []
-      if (reset) {
-        uploadList.value = list
-      } else {
-        uploadList.value = [...uploadList.value, ...list]
-      }
-      hasMore.value = page.value < (res.data?.totalPages || 1)
+    const list = res.data?.list || []
+    const totalPages = Number(res.data?.totalPages || 1)
 
-      if (res.data?.stats) {
-        stats.value = res.data.stats
-      }
+    uploadList.value = reset ? list : [...uploadList.value, ...list]
+    hasMore.value = page.value < totalPages
+
+    if (res.data?.stats) {
+      stats.value = res.data.stats
     }
   } catch (e) {
     console.error('加载上传记录失败:', e)
@@ -155,7 +145,7 @@ const filterByStatus = (status) => {
 }
 
 const loadMore = () => {
-  page.value++
+  page.value += 1
   loadUploads(false)
 }
 
@@ -170,11 +160,13 @@ const goUpload = () => {
 const downloadFile = (item) => {
   const token = uni.getStorageSync('token')
   if (!token) {
-    return uni.navigateTo({ url: '/pages/login/login' })
+    uni.navigateTo({ url: '/pages/login/login' })
+    return
   }
+
   uni.downloadFile({
     url: `http://127.0.0.1:3000/api/material/download/${item.id}`,
-    header: { 'Authorization': `Bearer ${token}` },
+    header: { Authorization: `Bearer ${token}` },
     success: (res) => {
       if (res.statusCode === 200) {
         uni.openDocument({
@@ -192,22 +184,18 @@ const downloadFile = (item) => {
 const confirmDelete = (item) => {
   uni.showModal({
     title: '确认删除',
-    content: `确定要删除"${item.title}"吗？删除后不可恢复。`,
+    content: `确定要删除“${item.title}”吗？删除后不可恢复。`,
     confirmColor: '#ff3b30',
     success: async (res) => {
-      if (res.confirm) {
-        try {
-          const result = await materialApi.deleteMaterial(item.id)
-          if (result.code === 200) {
-            uni.showToast({ title: '删除成功', icon: 'success' })
-            loadUploads(true)
-          } else {
-            uni.showToast({ title: result.msg || '删除失败', icon: 'none' })
-          }
-        } catch (e) {
-          console.error('删除失败:', e)
-          uni.showToast({ title: '删除失败', icon: 'none' })
-        }
+      if (!res.confirm) return
+
+      try {
+        await materialApi.deleteMaterial(item.id)
+        uni.showToast({ title: '删除成功', icon: 'success' })
+        loadUploads(true)
+      } catch (e) {
+        console.error('删除失败:', e)
+        uni.showToast({ title: '删除失败', icon: 'none' })
       }
     }
   })
@@ -215,9 +203,9 @@ const confirmDelete = (item) => {
 
 const formatFileSize = (bytes) => {
   if (!bytes) return '0B'
-  if (bytes < 1024) return bytes + 'B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + 'MB'
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
 const getAuditLabel = (status) => {
@@ -261,31 +249,25 @@ onShow(() => {
 }
 
 .stat-num.active {
-  color: #007AFF;
+  color: #007aff;
 }
 
 .stat-num.approved {
-  color: #4CAF50;
+  color: #4caf50;
 }
 
-.stat-num.approved.active {
-  color: #007AFF;
+.stat-num.approved.active,
+.stat-num.pending.active,
+.stat-num.rejected.active {
+  color: #007aff;
 }
 
 .stat-num.pending {
-  color: #FF9500;
-}
-
-.stat-num.pending.active {
-  color: #007AFF;
+  color: #ff9500;
 }
 
 .stat-num.rejected {
   color: #ff3b30;
-}
-
-.stat-num.rejected.active {
-  color: #007AFF;
 }
 
 .stat-label {
@@ -332,7 +314,7 @@ onShow(() => {
 
 .meta-tag {
   font-size: 22rpx;
-  color: #007AFF;
+  color: #007aff;
   background: rgba(0, 122, 255, 0.1);
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
@@ -368,17 +350,17 @@ onShow(() => {
   background: rgba(255, 59, 48, 0.1);
 }
 
-.audit-badge .badge-text {
+.badge-text {
   font-size: 22rpx;
   font-weight: 500;
 }
 
 .audit-badge.pending .badge-text {
-  color: #FF9500;
+  color: #ff9500;
 }
 
 .audit-badge.approved .badge-text {
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 .audit-badge.rejected .badge-text {
@@ -411,16 +393,11 @@ onShow(() => {
 }
 
 .action-icon {
-  font-size: 28rpx;
-  margin-right: 6rpx;
-}
-
-.action-label {
   font-size: 24rpx;
   color: #666;
 }
 
-.action-btn.delete .action-label {
+.action-btn.delete .action-icon {
   color: #ff3b30;
 }
 
@@ -458,7 +435,7 @@ onShow(() => {
 .load-more {
   text-align: center;
   padding: 30rpx;
-  color: #007AFF;
+  color: #007aff;
   font-size: 26rpx;
 }
 
@@ -469,7 +446,7 @@ onShow(() => {
   width: 110rpx;
   height: 110rpx;
   border-radius: 55rpx;
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #007aff, #00c6ff);
   display: flex;
   align-items: center;
   justify-content: center;

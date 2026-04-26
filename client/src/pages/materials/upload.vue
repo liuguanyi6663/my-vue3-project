@@ -1,7 +1,6 @@
 <template>
   <view class="page">
     <view class="form-card card">
-      <!-- 分类选择 -->
       <view class="form-item">
         <text class="form-label">资料分类 <text class="required">*</text></text>
         <picker mode="selector" :range="parentCategories" range-key="name" @change="onCategoryChange">
@@ -12,48 +11,44 @@
         </picker>
       </view>
 
-      <!-- 资料名称 -->
       <view class="form-item">
         <text class="form-label">资料名称 <text class="required">*</text></text>
-        <input 
-          class="form-input" 
-          v-model="form.title" 
+        <input
+          class="form-input"
+          v-model="form.title"
           :placeholder="'如：' + currentYear + '年英语一真题及解析'"
           maxlength="100"
         />
       </view>
 
-      <!-- 年份 -->
       <view class="form-item">
         <text class="form-label">资料年份</text>
-        <input 
-          class="form-input" 
-          v-model="form.year" 
+        <input
+          class="form-input"
+          v-model="form.year"
           type="number"
           :placeholder="'如：' + currentYear"
           maxlength="4"
         />
       </view>
 
-      <!-- 描述 -->
       <view class="form-item content-item">
         <text class="form-label">资料描述</text>
-        <textarea 
-          class="content-textarea" 
-          v-model="form.description" 
+        <textarea
+          class="content-textarea"
+          v-model="form.description"
           placeholder="简要描述资料内容、适用范围等..."
           maxlength="500"
         />
       </view>
 
-      <!-- 文件上传 -->
       <view class="form-item file-item">
         <text class="form-label">上传文件 <text class="required">*</text></text>
-        
+
         <view v-if="!uploadedFile" class="upload-area" @click="chooseFile">
           <text class="upload-icon">📁</text>
           <text class="upload-text">点击选择文件</text>
-          <text class="upload-hint">支持 PDF、Word、图片，最大50MB</text>
+          <text class="upload-hint">支持 PDF、Word、图片，最大 50MB</text>
         </view>
 
         <view v-else class="file-preview">
@@ -66,7 +61,6 @@
         </view>
       </view>
 
-      <!-- 上传进度 -->
       <view v-if="uploading" class="progress-wrap">
         <view class="progress-bar">
           <view class="progress-fill" :style="{ width: uploadProgress + '%' }"></view>
@@ -74,23 +68,17 @@
         <text class="progress-text">上传中... {{ uploadProgress }}%</text>
       </view>
 
-      <!-- 提交按钮 -->
-      <button 
-        class="submit-btn" 
-        :disabled="!canSubmit || uploading"
-        @click="submitUpload"
-      >
+      <button class="submit-btn" :disabled="!canSubmit || uploading" @click="submitUpload">
         {{ uploading ? '上传中...' : '提交上传' }}
       </button>
     </view>
 
-    <!-- 上传须知 -->
     <view class="notice card">
-      <text class="notice-title">📋 上传须知</text>
-      <text class="notice-text">1. 请确保上传的资料内容合法合规，不侵犯他人版权</text>
-      <text class="notice-text">2. 资料上传后需要管理员审核通过后才会显示</text>
-      <text class="notice-text">3. 下载时将自动添加水印以防止外传</text>
-      <text class="notice-text">4. 禁止上传盗版课程、广告引流等内容</text>
+      <text class="notice-title">上传须知</text>
+      <text class="notice-text">1. 请确保上传资料合法合规，不侵犯他人版权。</text>
+      <text class="notice-text">2. 上传成功后可在“我的上传”中查看记录。</text>
+      <text class="notice-text">3. 公开展示以资料中心列表和审核状态为准。</text>
+      <text class="notice-text">4. 禁止上传广告、引流或违规内容。</text>
     </view>
 
     <view style="height: 120rpx;"></view>
@@ -119,90 +107,81 @@ const form = ref({
 })
 
 const canSubmit = computed(() => {
-  return form.value.title.trim() && 
-         selectedCategory.value && 
-         uploadedFile.value
+  return !!(form.value.title.trim() && selectedCategory.value && uploadedFile.value)
 })
 
 const loadCategories = async () => {
   try {
     const res = await materialApi.getCategories()
-    if (res.data && res.data.length > 0) {
+    if (res.data?.length) {
       categories.value = res.data
       buildCategoryList()
-    } else {
-      useDefaultCategories()
+      return
     }
   } catch (e) {
-    console.error('API加载失败，使用默认分类:', e)
-    useDefaultCategories()
+    console.error('加载分类失败，使用默认分类:', e)
   }
+
+  useDefaultCategories()
 }
 
 const buildCategoryList = () => {
-  parentCategories.value = categories.value.filter(c => c.parent_id === 0)
+  parentCategories.value = categories.value.filter((item) => Number(item.parent_id) === 0)
 }
 
 const useDefaultCategories = () => {
-  const defaultData = [
+  categories.value = [
     { id: 1, name: '公共课', parent_id: 0, type: 'public' },
-    { id: 2, name: '英语', parent_id: 1, type: 'public' },
-    { id: 3, name: '政治', parent_id: 1, type: 'public' },
-    { id: 4, name: '数学', parent_id: 1, type: 'public' },
     { id: 5, name: '专业课', parent_id: 0, type: 'major' },
-    { id: 6, name: '计算机', parent_id: 5, type: 'major' },
-    { id: 7, name: '经济学', parent_id: 5, type: 'major' },
-    { id: 8, name: '管理学', parent_id: 5, type: 'major' },
-    { id: 9, name: '法学', parent_id: 5, type: 'major' },
-    { id: 10, name: '真题', parent_id: 0, type: 'exam' },
-    { id: 11, name: '英语一真题', parent_id: 10, type: 'exam' },
-    { id: 12, name: '数学一真题', parent_id: 10, type: 'exam' },
-    { id: 13, name: '政治真题', parent_id: 10, type: 'exam' },
-    { id: 14, name: '笔记', parent_id: 0, type: 'note' },
-    { id: 15, name: '手写笔记', parent_id: 14, type: 'note' },
-    { id: 16, name: '电子笔记', parent_id: 14, type: 'note' },
-    { id: 17, name: '复试', parent_id: 0, type: 'interview' },
-    { id: 18, name: '面试经验', parent_id: 17, type: 'interview' },
-    { id: 19, name: '调剂指南', parent_id: 17, type: 'interview' },
+    { id: 6, name: '真题', parent_id: 0, type: 'exam' },
+    { id: 7, name: '学长笔记', parent_id: 0, type: 'notes' },
+    { id: 8, name: '复试资料', parent_id: 0, type: 'interview' }
   ]
-  categories.value = defaultData
   buildCategoryList()
 }
 
 const onCategoryChange = (e) => {
-  const idx = e.detail.value
-  if (idx >= parentCategories.value.length) return
-  const selected = parentCategories.value[idx]
+  const index = Number(e.detail.value)
+  const selected = parentCategories.value[index]
+  if (!selected) return
+
   selectedCategory.value = selected.id
   selectedCategoryName.value = selected.name
 }
 
 const chooseFile = () => {
-  uni.chooseMessageFile?.({
-    count: 1,
-    type: 'file',
-    success: (res) => {
-      uploadedFile.value = res.tempFiles[0]
-    },
-    fail: () => {
-      uni.chooseImage({
-        count: 1,
-        success: (res) => {
-          uploadedFile.value = {
-            name: res.tempFilePaths[0].split('/').pop(),
-            size: 0,
-            path: res.tempFilePaths[0]
-          }
+  if (typeof uni.chooseMessageFile === 'function') {
+    uni.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      success: (res) => {
+        const file = res.tempFiles?.[0]
+        if (!file) return
+        uploadedFile.value = {
+          name: file.name,
+          size: file.size || 0,
+          path: file.path
         }
-      })
-    }
-  }) || uni.chooseImage({
+      },
+      fail: chooseImageFallback
+    })
+    return
+  }
+
+  chooseImageFallback()
+}
+
+const chooseImageFallback = () => {
+  uni.chooseImage({
     count: 1,
     success: (res) => {
+      const filePath = res.tempFilePaths?.[0]
+      if (!filePath) return
+
       uploadedFile.value = {
-        name: res.tempFilePaths[0].split('/').pop(),
+        name: filePath.split('/').pop(),
         size: 0,
-        path: res.tempFilePaths[0]
+        path: filePath
       }
     }
   })
@@ -213,45 +192,44 @@ const removeFile = () => {
 }
 
 const formatFileSize = (bytes) => {
-  if (!bytes) return ''
-  if (bytes < 1024) return bytes + 'B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + 'MB'
+  if (!bytes) return '未知大小'
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
 const submitUpload = async () => {
-  if (!canSubmit.value) return
-  
+  if (!canSubmit.value || !uploadedFile.value?.path) return
+
   uploading.value = true
   uploadProgress.value = 30
-  
+
   try {
-    const res = await materialApi.upload({
-      filePath: uploadedFile.value.path || uploadedFile.value.path,
+    await materialApi.upload({
+      filePath: uploadedFile.value.path,
       data: {
         category_id: String(selectedCategory.value),
-        title: form.value.title,
-        description: form.value.description,
+        title: form.value.title.trim(),
+        description: form.value.description.trim(),
         year: form.value.year
       }
     })
-    
+
     uploadProgress.value = 100
-    
+
+    uni.showToast({
+      title: '上传成功',
+      icon: 'success'
+    })
+
     setTimeout(() => {
-      uni.showToast({ 
-        title: '上传成功', 
-        icon: 'success' 
-      })
-      
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }, 500)
+      uni.navigateBack()
+    }, 1200)
   } catch (e) {
     console.error('上传失败:', e)
-    uploading.value = false
     uploadProgress.value = 0
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -408,14 +386,14 @@ onMounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #007AFF, #00c6ff);
+  background: linear-gradient(90deg, #007aff, #00c6ff);
   border-radius: 6rpx;
   transition: width 0.3s;
 }
 
 .progress-text {
   font-size: 24rpx;
-  color: #007AFF;
+  color: #007aff;
   text-align: center;
   display: block;
 }
@@ -423,7 +401,7 @@ onMounted(() => {
 .submit-btn {
   width: 100%;
   height: 90rpx;
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #007aff, #00c6ff);
   color: #fff;
   border-radius: 45rpx;
   font-size: 32rpx;

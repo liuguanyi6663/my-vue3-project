@@ -1,59 +1,66 @@
 <template>
   <view class="page">
-    <!-- 搜索栏 -->
     <view class="search-bar">
-      <input 
-        class="search-input" 
-        v-model="keyword" 
-        placeholder="搜索资料名称..." 
-        @confirm="search"
+      <input
+        class="search-input"
+        v-model="keyword"
+        placeholder="搜索资料名称..."
         confirm-type="search"
+        @confirm="search"
       />
       <text class="search-btn" @click="search">搜索</text>
     </view>
 
-    <!-- 分类标签 -->
     <scroll-view scroll-x class="category-scroll">
       <view class="category-list">
-        <text 
-          class="category-item" 
+        <text
+          class="category-item"
           :class="{ active: currentCategory === 0 }"
           @click="selectCategory(0)"
-        >全部</text>
-        <text 
-          v-for="(cat, index) in categories" :key="index"
-          class="category-item" 
+        >
+          全部
+        </text>
+        <text
+          v-for="cat in categories"
+          :key="cat.id"
+          class="category-item"
           :class="{ active: currentCategory === cat.id }"
           @click="selectCategory(cat.id)"
-        >{{ cat.name }}</text>
+        >
+          {{ cat.name }}
+        </text>
       </view>
     </scroll-view>
 
-    <!-- 排序选项 -->
     <view class="sort-bar">
-      <text 
-        class="sort-item" 
+      <text
+        class="sort-item"
         :class="{ active: sortType === 'created_at' }"
         @click="changeSort('created_at')"
-      >最新</text>
-      <text 
-        class="sort-item" 
+      >
+        最新
+      </text>
+      <text
+        class="sort-item"
         :class="{ active: sortType === 'download_count' }"
         @click="changeSort('download_count')"
-      >最热</text>
-      <text 
-        class="sort-item" 
+      >
+        最热
+      </text>
+      <text
+        class="sort-item"
         :class="{ active: sortType === 'like_count' }"
         @click="changeSort('like_count')"
-      >好评</text>
+      >
+        好评
+      </text>
     </view>
 
-    <!-- 资料列表 -->
     <view class="material-list">
-      <view 
-        class="material-card card" 
-        v-for="(item, index) in materialList" 
-        :key="index"
+      <view
+        v-for="item in materialList"
+        :key="item.id"
+        class="material-card card"
         @click="goDetail(item.id)"
       >
         <view class="material-header">
@@ -64,19 +71,21 @@
             <text class="score-num">{{ item.avg_score || '暂无' }}</text>
           </view>
         </view>
+
         <text class="material-desc">{{ item.description || '暂无描述' }}</text>
+
         <view class="material-meta">
           <text class="meta-item">{{ item.category_name || '未分类' }}</text>
-          <text class="meta-item" v-if="item.file_type">{{ getFileExt(item.file_path).toUpperCase() }}</text>
-          <text class="meta-item">📥 {{ item.download_count }}</text>
-          <text class="meta-item">👁 {{ item.view_count }}</text>
-          <text class="meta-item">👍 {{ item.like_count || 0 }}</text>
+          <text v-if="item.file_path" class="meta-item">{{ getFileExt(item.file_path).toUpperCase() }}</text>
+          <text class="meta-item">下载 {{ item.download_count || 0 }}</text>
+          <text class="meta-item">浏览 {{ item.view_count || 0 }}</text>
+          <text class="meta-item">点赞 {{ item.like_count || 0 }}</text>
           <text class="meta-item">{{ formatTime(item.created_at) }}</text>
         </view>
       </view>
 
       <view v-if="materialList.length === 0 && !loading" class="empty-state">
-        <text class="empty-icon">📂</text>
+        <text class="empty-icon">📚</text>
         <text class="empty-text">暂无资料</text>
       </view>
 
@@ -85,11 +94,10 @@
       </view>
 
       <view v-if="!hasMore && materialList.length > 0" class="no-more">
-        <text>— 没有更多了 —</text>
+        <text>没有更多了</text>
       </view>
     </view>
 
-    <!-- 上传按钮 -->
     <view class="upload-fab" @click="goUpload">
       <text class="fab-text">+</text>
     </view>
@@ -118,14 +126,14 @@ const loadCategories = async () => {
     const res = await materialApi.getCategories()
     categories.value = res.data || []
   } catch (e) {
-    console.error(e)
+    console.error('加载分类失败:', e)
   }
 }
 
 const loadMaterials = async (isRefresh = false) => {
   if (loading.value) return
   loading.value = true
-  
+
   if (isRefresh) {
     page.value = 1
     hasMore.value = true
@@ -137,23 +145,19 @@ const loadMaterials = async (isRefresh = false) => {
       pageSize,
       sort: sortType.value
     }
-    
+
     if (currentCategory.value > 0) params.category_id = currentCategory.value
-    if (keyword.value) params.keyword = keyword.value
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
 
     const res = await materialApi.getList(params)
     const list = res.data?.list || []
-    
-    if (isRefresh) {
-      materialList.value = list
-    } else {
-      materialList.value = [...materialList.value, ...list]
-    }
-    
-    hasMore.value = materialList.value.length < res.data?.total
-    page.value++
+    const total = Number(res.data?.total || 0)
+
+    materialList.value = isRefresh ? list : [...materialList.value, ...list]
+    hasMore.value = materialList.value.length < total
+    page.value += 1
   } catch (e) {
-    console.error(e)
+    console.error('加载资料失败:', e)
   } finally {
     loading.value = false
   }
@@ -173,8 +177,13 @@ const search = () => {
   loadMaterials(true)
 }
 
-const goDetail = (id) => uni.navigateTo({ url: `/pages/materials/detail?id=${id}` })
-const goUpload = () => uni.navigateTo({ url: '/pages/materials/upload' })
+const goDetail = (id) => {
+  uni.navigateTo({ url: `/pages/materials/detail?id=${id}` })
+}
+
+const goUpload = () => {
+  uni.navigateTo({ url: '/pages/materials/upload' })
+}
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
@@ -184,14 +193,25 @@ const formatTime = (timeStr) => {
 
 const getFileIcon = (filePath) => {
   if (!filePath) return '📄'
-  const ext = filePath.split('.').pop().toLowerCase()
+
+  const ext = getFileExt(filePath)
   const iconMap = {
-    pdf: '📕', doc: '📘', docx: '📘',
-    xls: '📗', xlsx: '📗',
-    ppt: '📙', pptx: '📙',
-    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️',
-    txt: '📝', zip: '📦', rar: '📦'
+    pdf: '📕',
+    doc: '📘',
+    docx: '📘',
+    xls: '📗',
+    xlsx: '📗',
+    ppt: '📙',
+    pptx: '📙',
+    jpg: '🖼️',
+    jpeg: '🖼️',
+    png: '🖼️',
+    gif: '🖼️',
+    txt: '📝',
+    zip: '🗜️',
+    rar: '🗜️'
   }
+
   return iconMap[ext] || '📄'
 }
 
@@ -233,7 +253,7 @@ onShow(() => {
 }
 
 .search-btn {
-  color: #007AFF;
+  color: #007aff;
   font-size: 28rpx;
   margin-left: 20rpx;
   padding: 10rpx 20rpx;
@@ -260,7 +280,7 @@ onShow(() => {
 }
 
 .category-item.active {
-  background: #007AFF;
+  background: #007aff;
   color: #fff;
 }
 
@@ -279,7 +299,7 @@ onShow(() => {
 }
 
 .sort-item.active {
-  color: #007AFF;
+  color: #007aff;
   font-weight: bold;
 }
 
@@ -367,7 +387,8 @@ onShow(() => {
   color: #999;
 }
 
-.loading-tip, .no-more {
+.loading-tip,
+.no-more {
   text-align: center;
   padding: 30rpx;
   color: #999;
@@ -380,7 +401,7 @@ onShow(() => {
   bottom: 200rpx;
   width: 100rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #007aff, #00c6ff);
   border-radius: 50%;
   display: flex;
   justify-content: center;
