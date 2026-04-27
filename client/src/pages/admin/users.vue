@@ -91,6 +91,17 @@
               <text class="cell-value">{{ item.exam_year }}</text>
             </view>
             <view class="info-cell">
+              <text class="cell-label">考研分数</text>
+              <text class="cell-value score-value" v-if="calcTotalScore(item) !== null">{{ calcTotalScore(item) }} 分</text>
+              <text class="cell-value" v-else>-</text>
+            </view>
+            <view class="info-cell">
+              <text class="cell-label">是否上岸</text>
+              <text class="admitted-tag admitted" v-if="item.is_admitted === 1">已上岸</text>
+              <text class="admitted-tag not-admitted" v-else-if="item.is_admitted === 0">未上岸</text>
+              <text class="cell-value" v-else>-</text>
+            </view>
+            <view class="info-cell">
               <text class="cell-label">注册时间</text>
               <text class="cell-value">{{ formatDate(item.created_at) }}</text>
             </view>
@@ -400,6 +411,16 @@ const deleteUser = (user) => {
 
 const formatDate = (dateString) => formatDateUtil(dateString)
 
+const calcTotalScore = (user) => {
+  const math = parseFloat(user.math_score)
+  const english = parseFloat(user.english_score)
+  const politics = parseFloat(user.politics_score)
+  const professional = parseFloat(user.professional_score)
+  const scores = [math, english, politics, professional]
+  if (scores.every(s => isNaN(s))) return null
+  return scores.reduce((sum, s) => sum + (isNaN(s) ? 0 : s), 0)
+}
+
 onMounted(() => {
   loadCurrentUser()
   loadUsers()
@@ -643,6 +664,27 @@ onMounted(() => {
   font-size: 24rpx;
   color: #333;
   flex: 1;
+}
+
+.score-value {
+  font-weight: bold;
+  color: #c53030;
+}
+
+.admitted-tag {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 6rpx;
+}
+
+.admitted-tag.admitted {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.admitted-tag.not-admitted {
+  background: #fff3e0;
+  color: #ff9500;
 }
 
 .user-actions {

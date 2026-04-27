@@ -11,19 +11,27 @@ router.get('/users', adminAuth, async (req, res) => {
     const { keyword, role, page = 1, pageSize = 20 } = req.query
     const offset = (page - 1) * pageSize
     
-    let sql = 'SELECT id, openid, phone, student_id, nickname, avatar, college, major, target_school, target_major, exam_year, role, status, is_banned, created_at FROM users WHERE 1=1'
+    let sql = `SELECT u.id, u.openid, u.phone, u.student_id, u.nickname, u.avatar, u.college, u.major, u.target_school, u.target_major, u.exam_year, u.role, u.status, u.is_banned, u.created_at,
+       kr.math_score, kr.english_score, kr.politics_score, kr.professional_score, kr.is_admitted
+       FROM users u
+       LEFT JOIN student_kaoyan_records kr ON kr.user_id = u.id AND kr.id = (
+         SELECT id FROM student_kaoyan_records
+         WHERE user_id = u.id AND status = 'approved'
+         ORDER BY created_at DESC LIMIT 1
+       )
+       WHERE 1=1`
     const params = []
     
     if (keyword) {
-      sql += ' AND (nickname LIKE ? OR student_id LIKE ? OR phone LIKE ?)'
+      sql += ' AND (u.nickname LIKE ? OR u.student_id LIKE ? OR u.phone LIKE ?)'
       params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
     }
     if (role) {
-      sql += ' AND role=?'
+      sql += ' AND u.role=?'
       params.push(role)
     }
     
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    sql += ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?'
     params.push(parseInt(pageSize), parseInt(offset))
     
     const list = await db.query(sql, params)
@@ -662,6 +670,108 @@ router.get('/ai-usage', adminAuth, async (req, res) => {
     res.json(success(usage))
   } catch (err) {
     res.json(error('获取AI使用统计失败'))
+  }
+})
+
+router.get('/interview-audit/list', adminAuth, async (req, res) => {
+  try {
+    const { status, category, page = 1, pageSize = 20 } = req.query
+    const pageNum = parseInt(page) || 1
+    const size = parseInt(pageSize) || 20
+    const offset = (pageNum - 1) * size
+
+    let allItems = []
+
+    if (!category || category === 'oral') {
+      let oralSql = `SELECT oq.*, u.nickname as uploader_name, 'oral' as _type FROM oral_questions_user oq LEFT JOIN users u ON oq.user_id=u.id WHERE 1=1`
+      const oralParams = []
+      if (status) { oralSql += ' AND oq.audit_status=?'; oralParams.push(status) }
+      oralSql += ' ORDER BY oq.created_at DESC'
+      const oralItems = await db.query(oralSql, oralParams)
+      allItems = allItems.concat(oralItems)
+    }
+
+    if (!category || category === 'resume') {
+      let resumeSql = `SELECT rt.*, u.nickname as uploader_name, 'resume' as _type FROM resume_templates_user rt LEFT JOIN users u ON rt.user_id=u.id WHERE 1=1`
+      const resumeParams = []
+      if (status) { resumeSql += ' AND rt.audit_status=?'; resumeParams.push(status) }
+      resumeSql += ' ORDER BY rt.created_at DESC'
+      const resumeItems = await db.query(resumeSql, resumeParams)
+      allItems = allItems.concat(resumeItems)
+    }
+
+    if (!category || category === 'email') {
+      let emailSql = `SELECT et.*, u.nickname as uploader_name, 'email' as _type FROM email_templates_user et LEFT JOIN users u ON et.user_id=u.id WHERE 1=1`
+      const emailParams = []
+      if (status) { emailSql += ' AND et.audit_status=?'; emailParams.push(status) }
+      emailSql += ' ORDER BY et.created_at DESC'
+      const emailItems = await db.query(emailSql, emailParams)
+      allItems = allItems.concat(emailItems)
+    }
+
+    allItems.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    const total = allItems.length
+    const pagedItems = allItems.slice(offset, offset + size)
+
+    res.json(pageSuccess(pagedItems, total, pageNum, size))
+  } catch (err) {
+    console.error('获取复试资料审批列表失败:', err)
+    res.json(error('获取审批列表失败'))
+  }
+})
+
+router.get('/interview-audit/stats', adminAuth, async (req, res) => {
+  try {
+    const tables = ['oral_questions_user', 'resume_templates_user', 'email_templates_user']
+    let pending = 0, approved = 0, rejected = 0
+
+    for (const table of tables) {
+      const counts = await db.query(
+        `SELECT audit_status, COUNT(*) as cnt FROM ${table} GROUP BY audit_status`
+      )
+      for (const row of counts) {
+        if (row.audit_status === 'pending') pending += row.cnt
+        else if (row.audit_status === 'approved') approved += row.cnt
+        else if (row.audit_status === 'rejected') rejected += row.cnt
+      }
+    }
+
+    res.json(success({ pending, approved, rejected }))
+  } catch (err) {
+    console.error('获取复试资料审批统计失败:', err)
+    res.json(error('获取统计失败'))
+  }
+})
+
+router.put('/interview-audit/:type/:id', adminAuth, async (req, res) => {
+  try {
+    const { type, id } = req.params
+    const { audit_status } = req.body
+
+    if (!['approved', 'rejected'].includes(audit_status)) {
+      return res.json(error('无效的审核状态'))
+    }
+
+    const tableMap = {
+      oral: 'oral_questions_user',
+      resume: 'resume_templates_user',
+      email: 'email_templates_user'
+    }
+
+    const tableName = tableMap[type]
+    if (!tableName) {
+      return res.json(error('无效的资料类型'))
+    }
+
+    await db.query(
+      `UPDATE ${tableName} SET audit_status=? WHERE id=?`,
+      [audit_status, id]
+    )
+    res.json(success(null, '审核成功'))
+  } catch (err) {
+    console.error('审核复试资料失败:', err)
+    res.json(error('审核失败'))
   }
 })
 

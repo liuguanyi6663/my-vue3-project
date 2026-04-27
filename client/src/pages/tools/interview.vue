@@ -1,6 +1,5 @@
 <template>
   <view class="page">
-    <!-- 功能入口 -->
     <view class="tool-grid">
       <view 
         v-for="(tool, index) in tools" 
@@ -24,8 +23,8 @@
 
         <scroll-view scroll-y class="oral-list">
           <view 
-            v-for="(q, index) in oralQuestions" 
-            :key="index"
+            v-for="(q, index) in allOralQuestions" 
+            :key="q.id || index"
             class="oral-item"
           >
             <view class="question-section">
@@ -39,9 +38,80 @@
               <text class="a-content">{{ q.reference_answer }}</text>
             </view>
             
-            <button class="copy-btn" @click="copyAnswer(q)">复制参考回答</button>
+            <view class="oral-actions">
+              <button class="copy-btn" @click="copyAnswer(q)">复制参考回答</button>
+              <button 
+                v-if="q.type === 'user' && canDeleteOral(q)" 
+                class="delete-item-btn" 
+                @click="deleteOralQuestion(q)"
+              >删除</button>
+            </view>
+          </view>
+
+          <view v-if="allOralQuestions.length === 0" class="empty-state">
+            <text class="empty-text">暂无题目</text>
           </view>
         </scroll-view>
+
+        <view class="upload-bar">
+          <button class="btn-primary upload-btn" @click="showOralUpload = true">上传题目</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 口语题库上传弹窗 -->
+    <view v-if="showOralUpload" class="modal-mask" @click="showOralUpload = false">
+      <view class="modal-content upload-modal" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">上传口语题目</text>
+          <text class="close-btn" @click="showOralUpload = false">✕</text>
+        </view>
+
+        <view class="upload-form">
+          <view class="form-item">
+            <text class="form-label">英文问题 *</text>
+            <textarea 
+              class="form-textarea" 
+              v-model="oralForm.question_en" 
+              placeholder="请输入英文问题"
+              maxlength="500"
+            />
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">中文翻译</text>
+            <textarea 
+              class="form-textarea" 
+              v-model="oralForm.question_cn" 
+              placeholder="请输入中文翻译（选填）"
+              maxlength="500"
+            />
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">参考回答 *</text>
+            <textarea 
+              class="form-textarea answer-textarea" 
+              v-model="oralForm.reference_answer" 
+              placeholder="请输入参考回答（纯文本）"
+              maxlength="2000"
+            />
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">分类</text>
+            <input class="form-input" v-model="oralForm.category" placeholder="如：自我介绍、学术背景等" />
+          </view>
+
+          <button 
+            class="btn-primary submit-btn" 
+            :disabled="!oralForm.question_en.trim() || !oralForm.reference_answer.trim() || oralUploading"
+            @click="submitOralQuestion"
+          >
+            {{ oralUploading ? '提交中...' : '提交审核' }}
+          </button>
+          <text class="upload-tip">提交后将由管理员审核通过后展示</text>
+        </view>
       </view>
     </view>
 
@@ -53,20 +123,37 @@
           <text class="close-btn" @click="showResume = false">✕</text>
         </view>
 
-        <view class="template-list">
-          <view 
-            v-for="(tpl, index) in resumeTemplates" 
-            :key="index"
-            class="template-item"
-          >
-            <view class="template-info">
-              <text class="template-name">{{ tpl.name }}</text>
-              <text class="template-desc">{{ tpl.desc }}</text>
+        <scroll-view scroll-y class="template-scroll">
+          <view class="template-list">
+            <view 
+              v-for="(tpl, index) in allResumeTemplates" 
+              :key="tpl.id || index"
+              class="template-item"
+            >
+              <view class="template-info">
+                <text class="template-name">
+                  {{ tpl.name }}
+                  <text v-if="tpl.type === 'user'" class="user-tag">用户上传</text>
+                </text>
+                <text class="template-desc">{{ tpl.desc }}</text>
+                <text v-if="tpl.type === 'user' && tpl.uploader_name" class="template-uploader">上传者：{{ tpl.uploader_name }}</text>
+              </view>
+              <view class="template-actions">
+                <button class="download-tpl-btn" @click="downloadTemplate(tpl)">
+                  {{ tpl.type === 'system' ? '下载模板' : '下载' }}
+                </button>
+                <button 
+                  v-if="tpl.type === 'user' && canDeleteDoc(tpl)" 
+                  class="delete-item-btn" 
+                  @click="deleteResumeTemplate(tpl)"
+                >删除</button>
+              </view>
             </view>
-            <button class="download-tpl-btn" @click="downloadTemplate(tpl)">
-              下载模板
-            </button>
           </view>
+        </scroll-view>
+
+        <view class="upload-bar">
+          <button class="btn-primary upload-btn" @click="uploadResumeDoc">上传Word模板</button>
         </view>
       </view>
     </view>
@@ -79,10 +166,11 @@
           <text class="close-btn" @click="showEmail = false">✕</text>
         </view>
 
-        <view class="email-list">
+        <scroll-view scroll-y class="email-scroll">
+          <view class="section-label">系统模板</view>
           <view 
-            v-for="(email, index) in emailTemplates" 
-            :key="index"
+            v-for="(email, index) in systemEmailTemplates" 
+            :key="email.id || index"
             class="email-item"
           >
             <text class="email-scene">{{ email.scene }}</text>
@@ -92,64 +180,28 @@
             </view>
             <button class="copy-btn" @click="copyEmail(email)">一键复制</button>
           </view>
-        </view>
-      </view>
-    </view>
 
-    <!-- AI润色弹窗 -->
-    <view v-if="showPolish" class="modal-mask" @click="showPolish = false">
-      <view class="modal-content polish-modal" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">AI自我介绍/简历润色</text>
-          <text class="close-btn" @click="showPolish = false">✕</text>
-        </view>
-
-        <view class="polish-form">
-          <view class="form-item">
-            <text class="form-label">输入内容</text>
-            <textarea 
-              class="polish-input" 
-              v-model="polishContent" 
-              placeholder="请输入你的自我介绍、个人经历或简历内容..."
-              maxlength="2000"
-            />
-            <text class="char-count">{{ polishContent.length }}/2000</text>
-          </view>
-
-          <view class="form-item">
-            <text class="form-label">输出风格</text>
-            <picker :range="['正式学术', '亲切自然']" @change="(e) => polishStyle = ['formal','casual'][e.detail.value]">
-              <view class="style-picker">{{ polishStyle === 'formal' ? '正式学术' : '亲切自然' }}</view>
-            </picker>
-          </view>
-
-          <view class="form-item">
-            <text class="form-label">语言</text>
-            <picker :range="['中文', '英文']" @change="(e) => polishLang = ['zh','en'][e.detail.value]">
-              <view class="style-picker">{{ polishLang === 'zh' ? '中文' : '英文' }}</view>
-            </picker>
-          </view>
-
-          <button 
-            class="btn-primary polish-btn" 
-            :disabled="!polishContent.trim() || polishing"
-            @click="doPolish"
+          <view v-if="userEmailTemplates.length > 0" class="section-label" style="margin-top: 20rpx;">用户上传模板</view>
+          <view 
+            v-for="(email, index) in userEmailTemplates" 
+            :key="email.id || index"
+            class="email-item"
           >
-            {{ polishing ? '润色中...' : '开始润色' }}
-          </button>
-
-          <!-- 润色结果 -->
-          <view v-if="polishResult" class="result-area">
-            <text class="result-title">润色结果：</text>
-            <text class="result-text">{{ polishResult }}</text>
-            <view class="result-actions">
-              <button class="btn-outline copy-result-btn" @click="copyResult">复制结果</button>
-              <button class="btn-outline re-polish-btn" @click="doPolish">重新润色</button>
+            <view class="email-item-header">
+              <text class="email-scene">{{ email.name }}</text>
+              <view class="email-item-actions">
+                <button class="download-tpl-btn small" @click="downloadEmailTemplate(email)">下载</button>
+                <button v-if="canDeleteDoc(email)" class="delete-item-btn small" @click="deleteEmailTemplateItem(email)">删除</button>
+              </view>
             </view>
+            <text v-if="email.desc" class="template-desc">{{ email.desc }}</text>
+            <text v-if="email.uploader_name" class="template-uploader">上传者：{{ email.uploader_name }}</text>
           </view>
-        </view>
+        </scroll-view>
 
-        <text class="usage-tip">今日剩余使用次数：{{ remainingUses }}次</text>
+        <view class="upload-bar">
+          <button class="btn-primary upload-btn" @click="uploadEmailDoc">上传Word模板</button>
+        </view>
       </view>
     </view>
 
@@ -158,155 +210,424 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { interviewApi } from '@/api/index'
 
 const showOral = ref(false)
 const showResume = ref(false)
 const showEmail = ref(false)
-const showPolish = ref(false)
+const showOralUpload = ref(false)
 
-const polishContent = ref('')
-const polishStyle = ref('formal')
-const polishLang = ref('zh')
-const polishResult = ref('')
-const polishing = ref(false)
-const remainingUses = ref(3)
+const userInfo = ref(null)
+const oralUploading = ref(false)
+
+const systemOralQuestions = ref([])
+const userOralQuestions = ref([])
+const systemResumeTemplates = ref([])
+const userResumeTemplates = ref([])
+const systemEmailTemplates = ref([])
+const userEmailTemplates = ref([])
+
+const oralForm = ref({
+  question_en: '',
+  question_cn: '',
+  reference_answer: '',
+  category: ''
+})
 
 const tools = [
-  { icon: '🗣️', name: '英语口语题库', desc: '30道常见问题及参考回答', action: 'oral' },
-  { icon: '📄', name: '简历模板下载', desc: '3套Word模板，带水印', action: 'resume' },
-  { icon: '✉️', name: '导师邮件模板', desc: '3种场景，一键复制', action: 'email' },
-  { icon: '✨', name: 'AI简历润色', desc: '智能优化你的自我介绍', action: 'polish' }
+  { icon: '🗣️', name: '英语口语题库', desc: '常见问题及参考回答，支持上传', action: 'oral' },
+  { icon: '📄', name: '简历模板下载', desc: 'Word模板，支持上传下载', action: 'resume' },
+  { icon: '✉️', name: '导师邮件模板', desc: '邮件模板，支持上传下载', action: 'email' },
+  { icon: '💬', name: '复试交流', desc: '跳转至复试调剂讨论区', action: 'forum' }
 ]
 
-const oralQuestions = [
-  {
-    question_en: 'Could you please introduce yourself briefly?',
-    question_cn: '请简单介绍一下你自己',
-    reference_answer: 'Good morning/afternoon, professors. It\'s my great honor to be here. My name is [姓名], and I graduated from [本科学校] with a major in [专业]. During my undergraduate studies, I have developed a strong interest in [研究方向], and I hope to pursue further studies under your guidance.'
-  },
-  {
-    question_en: 'Why do you want to pursue a master\'s degree?',
-    question_cn: '你为什么想读研？',
-    reference_answer: 'I believe that pursuing a master\'s degree is essential for my academic and career development. Through graduate study, I can deepen my understanding of [专业领域] and conduct more systematic research. Additionally, I aspire to contribute to this field through original research.'
-  },
-  {
-    question_en: 'What are your research interests?',
-    question_cn: '你的研究兴趣是什么？',
-    reference_answer: 'My primary research interest lies in [具体方向]. During my undergraduate studies, I completed a project on [项目名称], which sparked my passion for this area. I am particularly interested in exploring [具体问题] because it has significant practical implications.'
-  },
-  {
-    question_en: 'What is your greatest strength?',
-    question_cn: '你最大的优点是什么？',
-    reference_answer: 'I believe my greatest strength is my perseverance and ability to tackle complex problems systematically. For example, when working on [某个项目/经历], I encountered many challenges, but through persistent effort and methodical analysis, I was able to overcome them successfully.'
-  },
-  {
-    question_en: 'Why did you choose our university/laboratory?',
-    question_cn: '为什么选择我们学校/实验室？',
-    reference_answer: 'I chose this university because of its excellent reputation in [领域] and the outstanding research achievements of your laboratory. I have read several papers from your team and am deeply impressed by the innovative work being done here. I believe studying here will provide me with the best environment to grow as a researcher.'
+const allOralQuestions = computed(() => {
+  return [
+    ...systemOralQuestions.value.map(q => ({ ...q, type: 'system' })),
+    ...userOralQuestions.value.map(q => ({ ...q, type: 'user' }))
+  ]
+})
+
+const allResumeTemplates = computed(() => {
+  return [
+    ...systemResumeTemplates.value.map(t => ({ ...t, type: 'system' })),
+    ...userResumeTemplates.value.map(t => ({ ...t, type: 'user' }))
+  ]
+})
+
+const loadUserInfo = () => {
+  try {
+    const raw = uni.getStorageSync('userInfo')
+    userInfo.value = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null
+  } catch (e) {
+    userInfo.value = null
   }
-]
+}
 
-const resumeTemplates = [
-  { name: '学术型简历模板', desc: '突出科研成果和学术能力，适合学术导向的申请' },
-  { name: '综合型简历模板', desc: '平衡展示学习、科研和实践能力，通用性强' },
-  { name: '实践型简历模板', desc: '强调实习、项目和竞赛经验，适合专硕申请' }
-]
+const isAdmin = () => userInfo.value?.role === 'admin'
 
-const emailTemplates = [
-  {
-    scene: '初次联系',
-    subject: '关于报考硕士研究生事宜 - [姓名]',
-    content: `尊敬的[导师姓名]教授：
+const canDeleteOral = (q) => {
+  if (!userInfo.value) return false
+  return isAdmin() || q.user_id === userInfo.value.id
+}
 
-您好！
-
-我是[本科学校][专业]的[姓名]同学，今年准备报考贵校[学院/专业]的硕士研究生。
-
-通过阅读您的相关论文，我对您在[研究方向]领域的研究工作非常感兴趣。特别是您关于[某篇论文/研究成果]的工作让我深受启发。
-
-我本科期间学习成绩优异（GPA: X.X/4.0），曾获得[奖项名称]。在[某课程/项目]的学习中，我对[相关方向]产生了浓厚兴趣，并完成了[相关成果]。
-
-冒昧致信，希望能有机会得到您的指导。如蒙赐教，不胜感激！
-
-随信附上我的个人简历，恳请拨冗审阅。
-
-此致
-敬礼！
-
-学生：[姓名]
-[日期]
-[联系方式]`
-  },
-  {
-    scene: '成绩出来后',
-    subject: '汇报初试成绩及调剂意向 - [姓名]',
-    content: `尊敬的[导师姓名]教授：
-
-您好！我是之前与您联系过的[姓名]同学。
-
-非常高兴地告诉您，我在今年的研究生入学考试中取得了以下成绩：
-- 总分：XXX
-- 政治：XX
-- 英语：XX
-- 专业课一：XX
-- 专业课二：XX
-
-我对您的研究方向仍然充满热情，希望能有机会加入您的团队攻读硕士学位。如果符合要求，我非常愿意参加复试并进一步交流。
-
-期待您的回复！
-
-祝您工作顺利！
-
-学生：[姓名]
-[日期]`
-  },
-  {
-    scene: '复试后感谢',
-    subject: '感谢面试机会 - [姓名]',
-    content: `尊敬的[导师姓名]教授：
-
-您好！
-
-非常感谢您在百忙之中抽出时间参加我的复试面试。通过与您的交流，我受益匪浅，对您的研究方向有了更深入的理解，也更加坚定了跟随您学习的决心。
-
-无论最终录取结果如何，这次面试经历都让我收获颇丰。如果能有幸成为您的学生，我将倍加珍惜这个学习机会，努力钻研，不负您的期望。
-
-再次感谢您的时间和指导！
-
-祝您身体健康，工作顺利！
-
-学生：[姓名]
-[日期]`
-  }
-]
+const canDeleteDoc = (item) => {
+  if (!userInfo.value) return false
+  return isAdmin() || item.user_id === userInfo.value.id
+}
 
 const openTool = (tool) => {
   switch (tool.action) {
-    case 'oral': showOral.value = true; break
-    case 'resume': showResume.value = true; break
-    case 'email': showEmail.value = true; break
-    case 'polish': showPolish.value = true; break
+    case 'oral':
+      showOral.value = true
+      loadOralQuestions()
+      break
+    case 'resume':
+      showResume.value = true
+      loadResumeTemplates()
+      break
+    case 'email':
+      showEmail.value = true
+      loadEmailTemplates()
+      break
+    case 'forum':
+      uni.switchTab({
+        url: '/pages/forum/index',
+        success: () => {
+          setTimeout(() => {
+            uni.$emit('switchForumTab', 'adjust')
+          }, 300)
+        },
+        fail: () => {
+          uni.navigateTo({ url: '/pages/forum/index?category=adjust' })
+        }
+      })
+      break
   }
+}
+
+const loadOralQuestions = async () => {
+  try {
+    const res = await interviewApi.getOralQuestions()
+    if (res.code === 200) {
+      systemOralQuestions.value = res.data.system || []
+      userOralQuestions.value = res.data.user || []
+    }
+  } catch (e) {
+    console.error('加载口语题库失败:', e)
+  }
+}
+
+const submitOralQuestion = async () => {
+  if (!oralForm.value.question_en.trim() || !oralForm.value.reference_answer.trim()) return
+  
+  oralUploading.value = true
+  try {
+    const res = await interviewApi.uploadOralQuestion(oralForm.value)
+    if (res.code === 200) {
+      uni.showToast({ title: '提交成功，等待审核', icon: 'success' })
+      oralForm.value = { question_en: '', question_cn: '', reference_answer: '', category: '' }
+      showOralUpload.value = false
+      loadOralQuestions()
+    }
+  } catch (e) {
+    console.error('上传口语题目失败:', e)
+  } finally {
+    oralUploading.value = false
+  }
+}
+
+const deleteOralQuestion = (q) => {
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这道题目吗？',
+    success: async (modalRes) => {
+      if (!modalRes.confirm) return
+      try {
+        const res = await interviewApi.deleteOralQuestion(q.id)
+        if (res.code === 200) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          loadOralQuestions()
+        }
+      } catch (e) {
+        console.error('删除失败:', e)
+      }
+    }
+  })
+}
+
+const loadResumeTemplates = async () => {
+  try {
+    const res = await interviewApi.getResumeTemplates()
+    if (res.code === 200) {
+      systemResumeTemplates.value = res.data.system || []
+      userResumeTemplates.value = res.data.user || []
+    }
+  } catch (e) {
+    console.error('加载简历模板失败:', e)
+  }
+}
+
+const uploadResumeDoc = () => {
+  uni.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    extension: ['.doc', '.docx'],
+    success: (chooseRes) => {
+      const file = chooseRes.tempFiles[0]
+      const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+      if (!['.doc', '.docx'].includes(ext)) {
+        uni.showToast({ title: '仅支持Word文档', icon: 'none' })
+        return
+      }
+
+      uni.showModal({
+        title: '填写模板信息',
+        editable: true,
+        placeholderText: '请输入模板名称',
+        success: async (modalRes) => {
+          if (!modalRes.confirm) return
+          try {
+            uni.showLoading({ title: '上传中...' })
+            const res = await interviewApi.uploadResumeTemplate(file.path, {
+              name: modalRes.content || file.name,
+              desc: ''
+            })
+            uni.hideLoading()
+            if (res.code === 200) {
+              uni.showToast({ title: '上传成功，等待审核', icon: 'success' })
+              loadResumeTemplates()
+            }
+          } catch (e) {
+            uni.hideLoading()
+            console.error('上传简历模板失败:', e)
+          }
+        }
+      })
+    },
+    fail: () => {
+      uni.chooseFile({
+        count: 1,
+        type: 'file',
+        extension: ['.doc', '.docx'],
+        success: (chooseRes2) => {
+          const file = chooseRes2.tempFiles[0]
+          uni.showModal({
+            title: '填写模板信息',
+            editable: true,
+            placeholderText: '请输入模板名称',
+            success: async (modalRes) => {
+              if (!modalRes.confirm) return
+              try {
+                uni.showLoading({ title: '上传中...' })
+                const res = await interviewApi.uploadResumeTemplate(file.path, {
+                  name: modalRes.content || file.name,
+                  desc: ''
+                })
+                uni.hideLoading()
+                if (res.code === 200) {
+                  uni.showToast({ title: '上传成功，等待审核', icon: 'success' })
+                  loadResumeTemplates()
+                }
+              } catch (e) {
+                uni.hideLoading()
+                console.error('上传简历模板失败:', e)
+              }
+            }
+          })
+        }
+      })
+    }
+  })
+}
+
+const downloadTemplate = (tpl) => {
+  if (tpl.type === 'system') {
+    uni.showToast({ title: '功能开发中', icon: 'none' })
+    return
+  }
+  
+  const url = `http://127.0.0.1:3000/api/interview/resume-templates/${tpl.id}/download`
+  const token = uni.getStorageSync('token')
+  
+  uni.downloadFile({
+    url: url,
+    header: { 'Authorization': `Bearer ${token}` },
+    success: (res) => {
+      if (res.statusCode === 200) {
+        uni.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true,
+          success: () => {},
+          fail: () => {
+            uni.showToast({ title: '打开文件失败', icon: 'none' })
+          }
+        })
+      } else {
+        uni.showToast({ title: '下载失败', icon: 'none' })
+      }
+    },
+    fail: () => {
+      uni.showToast({ title: '下载失败', icon: 'none' })
+    }
+  })
+}
+
+const deleteResumeTemplate = (tpl) => {
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这个模板吗？',
+    success: async (modalRes) => {
+      if (!modalRes.confirm) return
+      try {
+        const res = await interviewApi.deleteResumeTemplate(tpl.id)
+        if (res.code === 200) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          loadResumeTemplates()
+        }
+      } catch (e) {
+        console.error('删除失败:', e)
+      }
+    }
+  })
+}
+
+const loadEmailTemplates = async () => {
+  try {
+    const res = await interviewApi.getEmailTemplates()
+    if (res.code === 200) {
+      systemEmailTemplates.value = res.data.system || []
+      userEmailTemplates.value = res.data.user || []
+    }
+  } catch (e) {
+    console.error('加载邮件模板失败:', e)
+  }
+}
+
+const uploadEmailDoc = () => {
+  uni.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    extension: ['.doc', '.docx'],
+    success: (chooseRes) => {
+      const file = chooseRes.tempFiles[0]
+      const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+      if (!['.doc', '.docx'].includes(ext)) {
+        uni.showToast({ title: '仅支持Word文档', icon: 'none' })
+        return
+      }
+
+      uni.showModal({
+        title: '填写模板信息',
+        editable: true,
+        placeholderText: '请输入模板名称',
+        success: async (modalRes) => {
+          if (!modalRes.confirm) return
+          try {
+            uni.showLoading({ title: '上传中...' })
+            const res = await interviewApi.uploadEmailTemplate(file.path, {
+              name: modalRes.content || file.name,
+              desc: ''
+            })
+            uni.hideLoading()
+            if (res.code === 200) {
+              uni.showToast({ title: '上传成功，等待审核', icon: 'success' })
+              loadEmailTemplates()
+            }
+          } catch (e) {
+            uni.hideLoading()
+            console.error('上传邮件模板失败:', e)
+          }
+        }
+      })
+    },
+    fail: () => {
+      uni.chooseFile({
+        count: 1,
+        type: 'file',
+        extension: ['.doc', '.docx'],
+        success: (chooseRes2) => {
+          const file = chooseRes2.tempFiles[0]
+          uni.showModal({
+            title: '填写模板信息',
+            editable: true,
+            placeholderText: '请输入模板名称',
+            success: async (modalRes) => {
+              if (!modalRes.confirm) return
+              try {
+                uni.showLoading({ title: '上传中...' })
+                const res = await interviewApi.uploadEmailTemplate(file.path, {
+                  name: modalRes.content || file.name,
+                  desc: ''
+                })
+                uni.hideLoading()
+                if (res.code === 200) {
+                  uni.showToast({ title: '上传成功，等待审核', icon: 'success' })
+                  loadEmailTemplates()
+                }
+              } catch (e) {
+                uni.hideLoading()
+                console.error('上传邮件模板失败:', e)
+              }
+            }
+          })
+        }
+      })
+    }
+  })
+}
+
+const downloadEmailTemplate = (tpl) => {
+  const url = `http://127.0.0.1:3000/api/interview/email-templates/${tpl.id}/download`
+  const token = uni.getStorageSync('token')
+  
+  uni.downloadFile({
+    url: url,
+    header: { 'Authorization': `Bearer ${token}` },
+    success: (res) => {
+      if (res.statusCode === 200) {
+        uni.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true,
+          success: () => {},
+          fail: () => {
+            uni.showToast({ title: '打开文件失败', icon: 'none' })
+          }
+        })
+      } else {
+        uni.showToast({ title: '下载失败', icon: 'none' })
+      }
+    },
+    fail: () => {
+      uni.showToast({ title: '下载失败', icon: 'none' })
+    }
+  })
+}
+
+const deleteEmailTemplateItem = (tpl) => {
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这个模板吗？',
+    success: async (modalRes) => {
+      if (!modalRes.confirm) return
+      try {
+        const res = await interviewApi.deleteEmailTemplate(tpl.id)
+        if (res.code === 200) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          loadEmailTemplates()
+        }
+      } catch (e) {
+        console.error('删除失败:', e)
+      }
+    }
+  })
 }
 
 const copyAnswer = (q) => {
   uni.setClipboardData({
     data: q.reference_answer,
     success: () => uni.showToast({ title: '已复制', icon: 'success' })
-  })
-}
-
-const downloadTemplate = (tpl) => {
-  uni.showModal({
-    title: '下载提示',
-    content: `即将下载「${tpl.name}」，文件将带有水印标识`,
-    confirmText: '下载',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showToast({ title: '功能开发中', icon: 'none' })
-      }
-    }
   })
 }
 
@@ -317,34 +638,9 @@ const copyEmail = (email) => {
   })
 }
 
-const doPolish = async () => {
-  if (!polishContent.value.trim()) return
-  
-  polishing.value = true
-  
-  // 模拟AI润色过程
-  setTimeout(() => {
-    const input = polishContent.value
-    
-    if (polishLang.value === 'en') {
-      polishResult.value = `[润色后的英文版本]\n\n${input}\n\n[AI优化建议]\n\nBased on your background, here is a polished version that highlights your strengths more effectively:\n\nDear Prof. [Name],\n\nI am writing to express my strong interest in... [Enhanced introduction with clearer structure and more professional tone]`
-    } else {
-      polishResult.value = `[润色后的中文版本]\n\n尊敬的老师：\n\n您好！我是来自${input.includes('学校') ? '' : '[XX大学]'}的${input.includes('姓名') ? '' : '[姓名]'}同学...\n\n[AI优化建议]\n\n1. 建议增加具体的量化数据支撑您的成就\n2. 可以更突出与目标方向的匹配度\n3. 语言可以更加简洁有力`
-    }
-    
-    polishing.value = false
-    remainingUses.value--
-  }, 1500)
-}
-
-const copyResult = () => {
-  if (polishResult.value) {
-    uni.setClipboardData({
-      data: polishResult.value,
-      success: () => uni.showToast({ title: '已复制', icon: 'success' })
-    })
-  }
-}
+onMounted(() => {
+  loadUserInfo()
+})
 </script>
 
 <style scoped>
@@ -488,6 +784,11 @@ const copyResult = () => {
   line-height: 1.7;
 }
 
+.oral-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
 .copy-btn {
   background: #007AFF;
   color: #fff;
@@ -495,6 +796,105 @@ const copyResult = () => {
   border-radius: 24rpx;
   padding: 12rpx 32rpx;
   font-size: 24rpx;
+}
+
+.delete-item-btn {
+  background: #ff3b30;
+  color: #fff;
+  border: none;
+  border-radius: 24rpx;
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+}
+
+.delete-item-btn.small {
+  padding: 8rpx 20rpx;
+  font-size: 22rpx;
+}
+
+.upload-bar {
+  padding: 16rpx 30rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.upload-btn {
+  width: 100%;
+  height: 72rpx;
+  font-size: 28rpx;
+  border-radius: 36rpx;
+}
+
+.upload-modal {
+  max-height: 90vh;
+}
+
+.upload-form {
+  padding: 24rpx 30rpx;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.form-item {
+  margin-bottom: 20rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  height: 120rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 26rpx;
+  box-sizing: border-box;
+  border: 2rpx solid transparent;
+}
+
+.form-textarea.answer-textarea {
+  height: 200rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 70rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  box-sizing: border-box;
+  border: 2rpx solid transparent;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 80rpx;
+  font-size: 30rpx;
+  margin-top: 10rpx;
+  border-radius: 40rpx;
+}
+
+.submit-btn[disabled] {
+  opacity: 0.5;
+}
+
+.upload-tip {
+  font-size: 22rpx;
+  color: #ff9500;
+  text-align: center;
+  display: block;
+  margin-top: 12rpx;
+}
+
+.template-scroll {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .template-list {
@@ -509,6 +909,12 @@ const copyResult = () => {
   background: #f9f9f9;
   border-radius: 12rpx;
   margin-bottom: 16rpx;
+  flex-wrap: wrap;
+}
+
+.template-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .template-name {
@@ -519,9 +925,33 @@ const copyResult = () => {
   margin-bottom: 6rpx;
 }
 
+.user-tag {
+  font-size: 20rpx;
+  background: #e8f4ff;
+  color: #3182ce;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  margin-left: 10rpx;
+  font-weight: normal;
+}
+
 .template-desc {
   font-size: 22rpx;
   color: #999;
+  display: block;
+}
+
+.template-uploader {
+  font-size: 22rpx;
+  color: #999;
+  display: block;
+  margin-top: 4rpx;
+}
+
+.template-actions {
+  display: flex;
+  gap: 12rpx;
+  margin-left: 16rpx;
 }
 
 .download-tpl-btn {
@@ -533,10 +963,23 @@ const copyResult = () => {
   font-size: 24rpx;
 }
 
-.email-modal .email-list {
+.download-tpl-btn.small {
+  padding: 8rpx 20rpx;
+  font-size: 22rpx;
+}
+
+.email-scroll {
   flex: 1;
   overflow-y: auto;
   padding: 20rpx 30rpx;
+}
+
+.section-label {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #007AFF;
+  padding: 10rpx 0;
+  display: block;
 }
 
 .email-item {
@@ -544,6 +987,18 @@ const copyResult = () => {
   background: #f9f9f9;
   border-radius: 12rpx;
   margin-bottom: 16rpx;
+}
+
+.email-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.email-item-actions {
+  display: flex;
+  gap: 10rpx;
 }
 
 .email-scene {
@@ -577,108 +1032,13 @@ const copyResult = () => {
   line-height: 1.7;
 }
 
-.polish-modal {
-  max-height: 90vh;
-}
-
-.polish-form {
-  padding: 24rpx 30rpx;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.form-item {
-  margin-bottom: 20rpx;
-}
-
-.form-label {
-  font-size: 26rpx;
-  color: #333;
-  font-weight: 500;
-  display: block;
-  margin-bottom: 10rpx;
-}
-
-.polish-input {
-  width: 100%;
-  height: 180rpx;
-  background: #f9f9f9;
-  border-radius: 12rpx;
-  padding: 16rpx 20rpx;
-  font-size: 26rpx;
-  box-sizing: border-box;
-  border: 2rpx solid transparent;
-}
-
-.char-count {
-  font-size: 22rpx;
-  color: #999;
-  text-align: right;
-  display: block;
-  margin-top: 6rpx;
-}
-
-.style-picker {
-  height: 70rpx;
-  background: #f9f9f9;
-  border-radius: 10rpx;
-  padding: 0 20rpx;
-  line-height: 70rpx;
-  font-size: 26rpx;
-  color: #666;
-}
-
-.polish-btn {
-  width: 100%;
-  height: 80rpx;
-  font-size: 30rpx;
-  margin-top: 10rpx;
-}
-
-.polish-btn[disabled] {
-  opacity: 0.5;
-}
-
-.result-area {
-  margin-top: 24rpx;
-  padding: 20rpx;
-  background: #e8ffee;
-  border-radius: 12rpx;
-}
-
-.result-title {
-  font-size: 26rpx;
-  color: #07c160;
-  font-weight: 500;
-  display: block;
-  margin-bottom: 12rpx;
-}
-
-.result-text {
-  font-size: 26rpx;
-  color: #333;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  display: block;
-}
-
-.result-actions {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-
-.copy-result-btn, .re-polish-btn {
-  flex: 1;
-  height: 64rpx;
-  font-size: 26rpx;
-}
-
-.usage-tip {
+.empty-state {
   text-align: center;
-  font-size: 24rpx;
-  color: #ff9500;
-  padding: 16rpx;
-  border-top: 1rpx solid #f0f0f0;
+  padding: 60rpx 0;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
 }
 </style>

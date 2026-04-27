@@ -193,6 +193,12 @@
       "style": {
         "navigationBarTitleText": "国家线数据管理"
       }
+    },
+    {
+      "path": "pages/admin/interview-audit",
+      "style": {
+        "navigationBarTitleText": "复试资料审批"
+      }
     }
   ],
   "globalStyle": {

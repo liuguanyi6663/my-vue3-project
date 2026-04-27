@@ -141,7 +141,10 @@ export const adminApi = {
   getNotifications: (params) => get('/admin/notifications', params),
   createNotification: (data) => post('/admin/notifications', data),
   updateNotification: (id, data) => put(`/admin/notifications/${id}`, data),
-  deleteNotification: (id) => del(`/admin/notifications/${id}`)
+  deleteNotification: (id) => del(`/admin/notifications/${id}`),
+  getInterviewAuditList: (params) => get('/admin/interview-audit/list', params),
+  getInterviewAuditStats: () => get('/admin/interview-audit/stats'),
+  auditInterviewItem: (type, id, data) => put(`/admin/interview-audit/${type}/${id}`, data)
 }
 
 export const recordApi = {
@@ -170,4 +173,66 @@ export const nationalLineApi = {
   delete: (id) => del(`/national-line/admin/delete/${id}`),
   batchSave: (data) => post('/national-line/admin/batch', data),
   batchDeleteByYear: (year, params) => del(`/national-line/admin/batch-by-year/${year}`, params)
+}
+
+export const interviewApi = {
+  getOralQuestions: () => get('/interview/oral-questions'),
+  uploadOralQuestion: (data) => post('/interview/oral-questions', data),
+  deleteOralQuestion: (id) => del(`/interview/oral-questions/${id}`),
+  getResumeTemplates: () => get('/interview/resume-templates'),
+  uploadResumeTemplate: (filePath, formData) => {
+    const token = uni.getStorageSync('token')
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url: 'http://127.0.0.1:3000/api/interview/resume-templates',
+        filePath: filePath,
+        name: 'file',
+        header: { 'Authorization': `Bearer ${token}` },
+        formData: formData || {},
+        success: (res) => {
+          const data = JSON.parse(res.data)
+          if (data.code === 200) {
+            resolve(data)
+          } else {
+            uni.showToast({ title: data.msg || '上传失败', icon: 'none' })
+            reject(data)
+          }
+        },
+        fail: (err) => {
+          uni.showToast({ title: '上传失败，请检查网络', icon: 'none' })
+          reject(err)
+        }
+      })
+    })
+  },
+  deleteResumeTemplate: (id) => del(`/interview/resume-templates/${id}`),
+  downloadResumeTemplate: (id) => get(`/interview/resume-templates/${id}/download`),
+  getEmailTemplates: () => get('/interview/email-templates'),
+  uploadEmailTemplate: (filePath, formData) => {
+    const token = uni.getStorageSync('token')
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url: 'http://127.0.0.1:3000/api/interview/email-templates',
+        filePath: filePath,
+        name: 'file',
+        header: { 'Authorization': `Bearer ${token}` },
+        formData: formData || {},
+        success: (res) => {
+          const data = JSON.parse(res.data)
+          if (data.code === 200) {
+            resolve(data)
+          } else {
+            uni.showToast({ title: data.msg || '上传失败', icon: 'none' })
+            reject(data)
+          }
+        },
+        fail: (err) => {
+          uni.showToast({ title: '上传失败，请检查网络', icon: 'none' })
+          reject(err)
+        }
+      })
+    })
+  },
+  deleteEmailTemplate: (id) => del(`/interview/email-templates/${id}`),
+  downloadEmailTemplate: (id) => get(`/interview/email-templates/${id}/download`)
 }

@@ -38,6 +38,12 @@
           <text class="menu-label">国家线数据修改</text>
           <text class="menu-arrow">></text>
         </view>
+
+        <view class="menu-item" @click="goPage('/pages/admin/interview-audit')">
+          <text class="menu-icon">📋</text>
+          <text class="menu-label">复试资料审批</text>
+          <text class="menu-arrow">></text>
+        </view>
       </view>
 
       <view class="menu-group">

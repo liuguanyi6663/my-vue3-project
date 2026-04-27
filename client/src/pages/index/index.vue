@@ -47,7 +47,7 @@
             <text class="entry-icon">✅</text>
             <text class="entry-label">学习打卡</text>
           </view>
-          <view class="entry-item" @click="navigateTo('')">
+          <view class="entry-item" @click="navigateTo('/pages/tools/interview')">
             <text class="entry-icon new">🎯</text>
             <text class="entry-label">复试工具箱</text>
           </view>

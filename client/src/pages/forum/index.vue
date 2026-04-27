@@ -313,6 +313,11 @@ onMounted(() => {
   loadPosts()
 })
 
+uni.$on('switchForumTab', (tab) => {
+  currentTab.value = tab
+  loadPosts(true)
+})
+
 onShow(() => {
   // 检查是否有默认分类需要设置（从首页匿名树洞跳转过来）
   const defaultCategory = uni.getStorageSync('forumDefaultCategory')

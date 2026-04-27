@@ -446,3 +446,46 @@ INSERT INTO `sensitive_words` (`word`, `category`) VALUES
 ('作弊', '违规'),
 ('卖答案', '诈骗'),
 ('QQ群', '引流');
+
+CREATE TABLE IF NOT EXISTS `oral_questions_user` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '上传用户ID',
+  `question_en` VARCHAR(500) NOT NULL COMMENT '英文问题',
+  `question_cn` VARCHAR(500) DEFAULT NULL COMMENT '中文翻译',
+  `reference_answer` TEXT COMMENT '参考回答',
+  `category` VARCHAR(100) DEFAULT NULL COMMENT '分类',
+  `audit_status` ENUM('pending','approved','rejected') DEFAULT 'pending' COMMENT '审核状态',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user` (`user_id`),
+  INDEX `idx_audit_status` (`audit_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户上传口语题库表';
+
+CREATE TABLE IF NOT EXISTS `resume_templates_user` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '上传用户ID',
+  `name` VARCHAR(200) NOT NULL COMMENT '模板名称',
+  `desc` VARCHAR(500) DEFAULT NULL COMMENT '模板描述',
+  `file_name` VARCHAR(200) NOT NULL COMMENT '文件名',
+  `file_path` VARCHAR(500) NOT NULL COMMENT '文件路径',
+  `file_size` BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+  `download_count` INT DEFAULT 0 COMMENT '下载次数',
+  `audit_status` ENUM('pending','approved','rejected') DEFAULT 'pending' COMMENT '审核状态',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user` (`user_id`),
+  INDEX `idx_audit_status` (`audit_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户上传简历模板表';
+
+CREATE TABLE IF NOT EXISTS `email_templates_user` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '上传用户ID',
+  `name` VARCHAR(200) NOT NULL COMMENT '模板名称',
+  `desc` VARCHAR(500) DEFAULT NULL COMMENT '模板描述',
+  `file_name` VARCHAR(200) NOT NULL COMMENT '文件名',
+  `file_path` VARCHAR(500) NOT NULL COMMENT '文件路径',
+  `file_size` BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+  `download_count` INT DEFAULT 0 COMMENT '下载次数',
+  `audit_status` ENUM('pending','approved','rejected') DEFAULT 'pending' COMMENT '审核状态',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user` (`user_id`),
+  INDEX `idx_audit_status` (`audit_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户上传邮件模板表';
