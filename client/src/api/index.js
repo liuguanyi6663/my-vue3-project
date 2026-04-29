@@ -81,6 +81,7 @@ export const forumApi = {
   getPostDetail: (id) => get(`/forum/posts/${id}`),
   createPost: (data) => post('/forum/posts', data),
   deletePost: (id) => del(`/forum/posts/${id}`),
+  getMyPosts: (params) => get('/forum/my-posts', params),
   uploadImage: (filePath) => {
     const token = uni.getStorageSync('token')
     return new Promise((resolve, reject) => {
@@ -144,7 +145,31 @@ export const adminApi = {
   deleteNotification: (id) => del(`/admin/notifications/${id}`),
   getInterviewAuditList: (params) => get('/admin/interview-audit/list', params),
   getInterviewAuditStats: () => get('/admin/interview-audit/stats'),
-  auditInterviewItem: (type, id, data) => put(`/admin/interview-audit/${type}/${id}`, data)
+  auditInterviewItem: (type, id, data) => put(`/admin/interview-audit/${type}/${id}`, data),
+  exportKaoyanData: (sortType) => {
+    const token = uni.getStorageSync('token')
+    const BASE_URL = 'http://127.0.0.1:3000/api'
+    return new Promise((resolve, reject) => {
+      uni.downloadFile({
+        url: `${BASE_URL}/admin/kaoyan-export?sort=${sortType}`,
+        header: {
+          'Authorization': `Bearer ${token}`
+        },
+        success: (res) => {
+          if (res.statusCode === 200) {
+            resolve(res)
+          } else {
+            uni.showToast({ title: '导出失败', icon: 'none' })
+            reject(res)
+          }
+        },
+        fail: (err) => {
+          uni.showToast({ title: '网络错误，导出失败', icon: 'none' })
+          reject(err)
+        }
+      })
+    })
+  }
 }
 
 export const recordApi = {
@@ -177,6 +202,7 @@ export const nationalLineApi = {
 
 export const interviewApi = {
   getOralQuestions: () => get('/interview/oral-questions'),
+  getMyUploads: () => get('/interview/my-uploads'),
   uploadOralQuestion: (data) => post('/interview/oral-questions', data),
   deleteOralQuestion: (id) => del(`/interview/oral-questions/${id}`),
   getResumeTemplates: () => get('/interview/resume-templates'),
@@ -235,4 +261,13 @@ export const interviewApi = {
   },
   deleteEmailTemplate: (id) => del(`/interview/email-templates/${id}`),
   downloadEmailTemplate: (id) => get(`/interview/email-templates/${id}/download`)
+}
+
+export const feedbackApi = {
+  submit: (data) => post('/feedback/submit', data),
+  getMyList: (params) => get('/feedback/my', params),
+  getList: (params) => get('/feedback/list', params),
+  handle: (id, data) => post(`/feedback/${id}/handle`, data),
+  getStats: () => get('/feedback/stats'),
+  delete: (id) => del(`/feedback/${id}`)
 }

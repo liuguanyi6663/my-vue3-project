@@ -57,6 +57,7 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/index.js'
 import { formatDate as formatDateUtil } from '@/utils/date'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const currentImage = ref('')
 const screens = ref([])
@@ -77,7 +78,10 @@ const loadScreens = async () => {
   }
 }
 
-const chooseImage = () => {
+const chooseImage = async () => {
+  const authorized = await ensureAuthorize('album')
+  if (!authorized) return
+
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],

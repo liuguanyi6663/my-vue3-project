@@ -59,7 +59,7 @@ router.delete('/oral-questions/:id', auth, async (req, res) => {
       return res.json(error('题目不存在'))
     }
 
-    if (req.user.role !== 'admin' && question[0].user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && question[0].user_id !== req.user.id) {
       return res.json(error('无权删除'))
     }
 
@@ -68,6 +68,77 @@ router.delete('/oral-questions/:id', auth, async (req, res) => {
   } catch (err) {
     console.error('删除口语题目失败:', err)
     res.json(error('删除失败'))
+  }
+})
+
+router.get('/my-uploads', auth, async (req, res) => {
+  try {
+    const oralItems = await db.query(
+      `SELECT 
+        id,
+        'oral' as source_type,
+        '英语口语模板' as source_label,
+        COALESCE(question_cn, question_en) as title,
+        question_en,
+        question_cn,
+        reference_answer,
+        category,
+        audit_status,
+        created_at
+       FROM oral_questions_user
+       WHERE user_id=?
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    )
+
+    const resumeItems = await db.query(
+      `SELECT 
+        id,
+        'resume' as source_type,
+        '简历模板' as source_label,
+        name as title,
+        name,
+        \`desc\`,
+        file_name,
+        file_path,
+        file_size,
+        download_count,
+        audit_status,
+        created_at
+       FROM resume_templates_user
+       WHERE user_id=?
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    )
+
+    const emailItems = await db.query(
+      `SELECT 
+        id,
+        'email' as source_type,
+        '导师邮件模板' as source_label,
+        name as title,
+        name,
+        \`desc\`,
+        file_name,
+        file_path,
+        file_size,
+        download_count,
+        audit_status,
+        created_at
+       FROM email_templates_user
+       WHERE user_id=?
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    )
+
+    res.json(success({
+      oral: oralItems,
+      resume: resumeItems,
+      email: emailItems
+    }))
+  } catch (err) {
+    console.error('获取复试资料箱上传记录失败:', err)
+    res.json(error('获取上传记录失败'))
   }
 })
 
@@ -128,7 +199,7 @@ router.delete('/resume-templates/:id', auth, async (req, res) => {
       return res.json(error('模板不存在'))
     }
 
-    if (req.user.role !== 'admin' && template[0].user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && template[0].user_id !== req.user.id) {
       return res.json(error('无权删除'))
     }
 
@@ -245,7 +316,7 @@ router.delete('/email-templates/:id', auth, async (req, res) => {
       return res.json(error('模板不存在'))
     }
 
-    if (req.user.role !== 'admin' && template[0].user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && template[0].user_id !== req.user.id) {
       return res.json(error('无权删除'))
     }
 

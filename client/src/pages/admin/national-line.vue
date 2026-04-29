@@ -494,7 +494,7 @@ const handleDelete = (item) => {
 
 onMounted(() => {
   const user = uni.getStorageSync('userInfo')
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
     uni.showToast({ title: '权限不足', icon: 'none' })
     setTimeout(() => uni.navigateBack(), 1500)
     return

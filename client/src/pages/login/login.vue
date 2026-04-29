@@ -109,28 +109,44 @@ const handleWechatLogin = async () => {
   // #ifdef MP-WEIXIN
   try {
     uni.showLoading({ title: '登录中...' })
-    
+
     const loginRes = await new Promise((resolve, reject) => {
       uni.login({
         provider: 'weixin',
         success: resolve,
-        fail: reject
+        fail: (err) => {
+          console.error('微信登录失败:', err)
+          reject(new Error(err.errMsg || '微信登录调用失败'))
+        }
       })
     })
 
     const res = await userApi.login({ code: loginRes.code })
-    
+
     uni.setStorageSync('token', res.data.token)
     uni.setStorageSync('userInfo', res.data.userInfo)
 
     uni.hideLoading()
     uni.showToast({ title: '登录成功', icon: 'success' })
-    
+
     setTimeout(() => {
       uni.switchTab({ url: '/pages/index/index' })
     }, 1500)
   } catch (e) {
     uni.hideLoading()
+    const msg = e?.message || ''
+    if (msg.includes('deny') || msg.includes('cancel') || msg.includes('fail')) {
+      uni.showModal({
+        title: '登录失败',
+        content: '微信登录失败，您可以使用手机号登录',
+        showCancel: false,
+        confirmText: '我知道了'
+      })
+    } else if (msg.includes('timeout') || msg.includes('网络')) {
+      uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
+    } else {
+      uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+    }
     console.error(e)
   }
   // #endif

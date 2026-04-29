@@ -89,6 +89,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { materialApi } from '@/api/index'
 import { getCurrentYear } from '@/utils/date'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const FIXED_CATEGORIES = [
   { id: 1, name: '公共课', parent_id: 0, type: 'public' },
@@ -162,7 +163,14 @@ const chooseFile = () => {
           path: file.path
         }
       },
-      fail: chooseImageFallback
+      fail: (err) => {
+        const msg = err?.errMsg || ''
+        if (msg.includes('cancel')) {
+          return
+        }
+        console.warn('chooseMessageFile fail:', err)
+        chooseImageFallback()
+      }
     })
     return
   }
@@ -170,7 +178,10 @@ const chooseFile = () => {
   chooseImageFallback()
 }
 
-const chooseImageFallback = () => {
+const chooseImageFallback = async () => {
+  const authorized = await ensureAuthorize('album')
+  if (!authorized) return
+
   uni.chooseImage({
     count: 1,
     success: (res) => {

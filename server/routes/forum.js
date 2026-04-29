@@ -67,7 +67,7 @@ router.get('/posts', optionalAuth, async (req, res) => {
         
         // 标记是否是帖子作者或管理员
         post.isOwner = post.user_id === req.user.id
-        post.canDelete = post.user_id === req.user.id || req.user.role === 'admin'
+        post.canDelete = post.user_id === req.user.id || req.user.role === 'admin' || req.user.role === 'super_admin'
       } else {
         post.isLiked = false
         post.isFavorited = false
@@ -103,7 +103,7 @@ router.get('/posts/:id', optionalAuth, async (req, res) => {
     // 添加删除权限判断
     if (req.user) {
       post.isOwner = post.user_id === req.user.id
-      post.canDelete = post.user_id === req.user.id || req.user.role === 'admin'
+      post.canDelete = post.user_id === req.user.id || req.user.role === 'admin' || req.user.role === 'super_admin'
     } else {
       post.isOwner = false
       post.canDelete = false
@@ -208,6 +208,9 @@ router.get('/posts/:id', optionalAuth, async (req, res) => {
 
 router.post('/upload-image', auth, upload.single('image'), async (req, res) => {
   try {
+    if (req.user.is_banned === 1) {
+      return res.json({ code: 403, msg: '你已被禁言，请联系管理员解决', data: null })
+    }
     if (!req.file) {
       return res.json(error('请上传图片'))
     }
@@ -221,6 +224,9 @@ router.post('/upload-image', auth, upload.single('image'), async (req, res) => {
 
 router.post('/posts', auth, async (req, res) => {
   try {
+    if (req.user.is_banned === 1) {
+      return res.json({ code: 403, msg: '你已被禁言，请联系管理员解决', data: null })
+    }
     const { category, title, content, images, tags, is_anonymous } = req.body
     if (!category || !title || !content) {
       return res.json(error('请填写完整信息'))
@@ -260,7 +266,7 @@ router.delete('/posts/:id', auth, async (req, res) => {
     
     const post = posts[0]
     // 检查权限：只能删除自己的帖子或管理员
-    if (post.user_id !== req.user.id && req.user.role !== 'admin') {
+    if (post.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('无权限删除该帖子'))
     }
     
@@ -335,6 +341,9 @@ router.post('/posts/:id/favorite', auth, async (req, res) => {
 
 router.post('/posts/:id/comments', auth, async (req, res) => {
   try {
+    if (req.user.is_banned === 1) {
+      return res.json({ code: 403, msg: '你已被禁言，请联系管理员解决', data: null })
+    }
     const { content, parent_id, reply_to_user_id } = req.body
     if (!content) return res.json(error('请输入评论内容'))
 
@@ -438,7 +447,7 @@ router.delete('/comments/:id', auth, async (req, res) => {
     if (comment.length === 0) return res.json(error('评论不存在'))
 
     const c = comment[0]
-    if (c.user_id !== req.user.id && req.user.role !== 'admin') {
+    if (c.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('只能删除自己的评论'))
     }
 
@@ -561,6 +570,74 @@ router.get('/test-favorites', async (req, res) => {
     console.error('=== 测试收藏接口 - 失败 ===')
     console.error('错误:', err)
     res.json({ code: 500, msg: '测试失败: ' + err.message, data: null })
+  }
+})
+
+router.get('/my-posts', auth, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1
+    const pageSize = parseInt(req.query.pageSize) || 10
+    const offset = (page - 1) * pageSize
+    const category = req.query.category
+
+    let countSql = 'SELECT COUNT(*) as total FROM forum_posts WHERE user_id=? AND status=1'
+    let listSql = `SELECT p.*, 
+                   CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
+                   FROM forum_posts p 
+                   LEFT JOIN users u ON p.user_id=u.id 
+                   WHERE p.user_id=? AND p.status=1`
+    const countParams = [req.user.id]
+    const listParams = [req.user.id]
+
+    if (category) {
+      countSql += ' AND category=?'
+      listSql += ' AND p.category=?'
+      countParams.push(category)
+      listParams.push(category)
+    }
+
+    listSql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
+    listParams.push(pageSize, offset)
+
+    const list = await db.query(listSql, listParams)
+    const totalResult = await db.query(countSql, countParams)
+
+    const statsResult = await db.query(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN category='study' THEN 1 ELSE 0 END) as study_count,
+        SUM(CASE WHEN category='experience' THEN 1 ELSE 0 END) as experience_count,
+        SUM(CASE WHEN category='help' THEN 1 ELSE 0 END) as help_count,
+        SUM(CASE WHEN category='adjust' THEN 1 ELSE 0 END) as adjust_count,
+        SUM(CASE WHEN category='treehole' THEN 1 ELSE 0 END) as treehole_count
+       FROM forum_posts WHERE user_id=? AND status=1`,
+      [req.user.id]
+    )
+
+    for (const post of list) {
+      let parsedImages = []
+      try {
+        if (post.images) {
+          parsedImages = typeof post.images === 'string' ? JSON.parse(post.images) : post.images
+        }
+      } catch (e) {}
+      post.images = parsedImages
+
+      let parsedTags = []
+      try {
+        if (post.tags) {
+          parsedTags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags
+        }
+      } catch (e) {}
+      post.tags = parsedTags
+    }
+
+    res.json(pageSuccess(list, totalResult[0].total, page, pageSize, {
+      stats: statsResult[0]
+    }))
+  } catch (err) {
+    console.error(err)
+    res.json(error('获取我的帖子失败'))
   }
 })
 

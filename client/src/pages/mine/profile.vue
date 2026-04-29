@@ -91,6 +91,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { userApi } from '@/api/index'
 import { getAvatarUrl } from '@/utils/url'
 import { getRecentYears } from '@/utils/date'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const form = ref({
   avatar: '',
@@ -129,7 +130,10 @@ const loadUserInfo = async () => {
   }
 }
 
-const chooseAvatar = () => {
+const chooseAvatar = async () => {
+  const authorized = await ensureAuthorize('album')
+  if (!authorized) return
+
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],

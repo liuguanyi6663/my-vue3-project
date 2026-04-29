@@ -2,9 +2,10 @@ const express = require('express')
 const router = express.Router()
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
-const { adminAuth } = require('../middleware/auth')
+const { adminAuth, superAdminAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 const { getCurrentYear } = require('../utils/date')
+const ExcelJS = require('exceljs')
 
 router.get('/users', adminAuth, async (req, res) => {
   try {
@@ -57,6 +58,13 @@ router.get('/users', adminAuth, async (req, res) => {
 
 router.put('/users/:id', adminAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'super_admin') {
+      const targetUser = await db.query('SELECT role FROM users WHERE id=?', [req.params.id])
+      if (targetUser.length > 0 && targetUser[0].role === 'super_admin') {
+        return res.json({ code: 403, msg: '不能编辑超级管理员', data: null })
+      }
+    }
+
     const allowedFields = ['nickname', 'phone', 'student_id', 'college', 'major', 'target_school', 'target_major', 'exam_year']
     const fields = []
     const values = []
@@ -85,9 +93,13 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
       return res.json({ code: 403, msg: '不能删除自己的账号', data: null })
     }
 
-    const user = await db.query('SELECT id FROM users WHERE id=?', [userId])
+    const user = await db.query('SELECT id, role FROM users WHERE id=?', [userId])
     if (user.length === 0) {
       return res.json(error('用户不存在'))
+    }
+
+    if (req.user.role !== 'super_admin' && user[0].role === 'super_admin') {
+      return res.json({ code: 403, msg: '不能删除超级管理员', data: null })
     }
 
     const userPosts = await db.query('SELECT id FROM forum_posts WHERE user_id=?', [userId])
@@ -143,6 +155,32 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
 router.put('/users/:id/status', adminAuth, async (req, res) => {
   try {
     const { status, is_banned, role } = req.body
+
+    if (req.user.role !== 'super_admin') {
+      const targetUser = await db.query('SELECT role FROM users WHERE id=?', [req.params.id])
+      if (targetUser.length > 0 && targetUser[0].role === 'super_admin') {
+        return res.json({ code: 403, msg: '不能操作超级管理员', data: null })
+      }
+    }
+
+    if (role !== undefined && req.user.role !== 'super_admin') {
+      return res.json({ code: 403, msg: '仅超级管理员可修改用户角色', data: null })
+    }
+
+    if (role !== undefined) {
+      const targetUser = await db.query('SELECT id FROM users WHERE id=?', [req.params.id])
+      if (targetUser.length === 0) {
+        return res.json(error('用户不存在'))
+      }
+      if (parseInt(req.params.id) === parseInt(req.user.id)) {
+        return res.json({ code: 403, msg: '不能修改自己的角色', data: null })
+      }
+    }
+
+    if (is_banned !== undefined && parseInt(req.params.id) === parseInt(req.user.id)) {
+      return res.json({ code: 403, msg: '不能禁言自己', data: null })
+    }
+
     await db.query(
       'UPDATE users SET status=COALESCE(?,status), is_banned=COALESCE(?,is_banned), role=COALESCE(?,role) WHERE id=?',
       [status, is_banned, role, req.params.id]
@@ -768,10 +806,128 @@ router.put('/interview-audit/:type/:id', adminAuth, async (req, res) => {
       `UPDATE ${tableName} SET audit_status=? WHERE id=?`,
       [audit_status, id]
     )
-    res.json(success(null, '审核成功'))
+    res.json(success(null, '操作成功'))
   } catch (err) {
     console.error('审核复试资料失败:', err)
-    res.json(error('审核失败'))
+    res.json(error('操作失败'))
+  }
+})
+
+router.get('/kaoyan-export', adminAuth, async (req, res) => {
+  try {
+    const { sort } = req.query
+    const sortType = sort || 'score'
+
+    let sql = `SELECT r.id, r.name, r.student_id, r.college, r.major, r.exam_subjects,
+               r.is_cross_major, r.is_admitted, r.is_pass_line,
+               r.math_score, r.english_score, r.politics_score, r.professional_score,
+               r.target_school, r.target_major, r.school_level, r.exam_year,
+               r.status, r.created_at, u.nickname, u.phone
+               FROM student_kaoyan_records r
+               LEFT JOIN users u ON r.user_id = u.id
+               WHERE r.status = 'approved'`
+
+    if (sortType === 'score') {
+      sql += ` ORDER BY (COALESCE(r.math_score, 0) + COALESCE(r.english_score, 0) + COALESCE(r.politics_score, 0) + COALESCE(r.professional_score, 0)) DESC, r.created_at DESC`
+    } else {
+      sql += ` ORDER BY CONVERT(r.name USING gbk) ASC, r.created_at DESC`
+    }
+
+    const records = await db.query(sql)
+
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = '考研管理系统'
+    workbook.created = new Date()
+
+    const sheet = workbook.addWorksheet('考研数据', {
+      properties: { defaultColWidth: 16 }
+    })
+
+    const headerRow = [
+      { header: '序号', key: 'index', width: 8 },
+      { header: '姓名', key: 'name', width: 12 },
+      { header: '学号', key: 'student_id', width: 16 },
+      { header: '分院', key: 'college', width: 16 },
+      { header: '专业', key: 'major', width: 16 },
+      { header: '考研科目', key: 'exam_subjects', width: 20 },
+      { header: '考研年份', key: 'exam_year', width: 12 },
+      { header: '是否跨考', key: 'is_cross_major', width: 10 },
+      { header: '是否上岸', key: 'is_admitted', width: 10 },
+      { header: '是否过线', key: 'is_pass_line', width: 10 },
+      { header: '数学成绩', key: 'math_score', width: 12 },
+      { header: '英语成绩', key: 'english_score', width: 12 },
+      { header: '政治成绩', key: 'politics_score', width: 12 },
+      { header: '专业课成绩', key: 'professional_score', width: 14 },
+      { header: '总分', key: 'total_score', width: 10 },
+      { header: '目标院校', key: 'target_school', width: 20 },
+      { header: '目标专业', key: 'target_major', width: 16 },
+      { header: '院校层次', key: 'school_level', width: 12 },
+      { header: '提交时间', key: 'created_at', width: 20 }
+    ]
+
+    sheet.columns = headerRow
+
+    sheet.getRow(1).font = { bold: true, size: 12 }
+    sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
+    sheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFC53030' }
+    }
+    sheet.getRow(1).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } }
+
+    records.forEach((record, idx) => {
+      const totalScore = (parseFloat(record.math_score) || 0)
+        + (parseFloat(record.english_score) || 0)
+        + (parseFloat(record.politics_score) || 0)
+        + (parseFloat(record.professional_score) || 0)
+
+      sheet.addRow({
+        index: idx + 1,
+        name: record.name || '',
+        student_id: record.student_id || '',
+        college: record.college || '',
+        major: record.major || '',
+        exam_subjects: record.exam_subjects || '',
+        exam_year: record.exam_year || '',
+        is_cross_major: record.is_cross_major ? '是' : '否',
+        is_admitted: record.is_admitted ? '是' : '否',
+        is_pass_line: record.is_pass_line ? '是' : '否',
+        math_score: record.math_score || '',
+        english_score: record.english_score || '',
+        politics_score: record.politics_score || '',
+        professional_score: record.professional_score || '',
+        total_score: totalScore || '',
+        target_school: record.target_school || '',
+        target_major: record.target_major || '',
+        school_level: record.school_level || '',
+        created_at: record.created_at ? new Date(record.created_at).toLocaleString('zh-CN') : ''
+      })
+    })
+
+    for (let i = 2; i <= records.length + 1; i++) {
+      const row = sheet.getRow(i)
+      row.alignment = { vertical: 'middle', horizontal: 'center' }
+      if (i % 2 === 0) {
+        row.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFF0F0' }
+        }
+      }
+    }
+
+    const sortLabel = sortType === 'score' ? '按成绩降序' : '按姓名排序'
+    const fileName = encodeURIComponent(`考研数据导出_${sortLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+
+    await workbook.xlsx.write(res)
+    res.end()
+  } catch (err) {
+    console.error('导出考研数据失败:', err)
+    res.json(error('导出失败'))
   }
 })
 

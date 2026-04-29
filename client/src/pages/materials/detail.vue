@@ -209,6 +209,7 @@ import { ref, onMounted } from 'vue'
 import { materialApi } from '@/api/index'
 import { getAvatarUrl } from '@/utils/url'
 import { formatDate as formatDateUtil } from '@/utils/date'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const detail = ref(null)
 const reviews = ref([])
@@ -297,11 +298,19 @@ const formatFileSize = (bytes) => {
 const downloadMaterial = async () => {
   try {
     uni.showLoading({ title: '准备下载...' })
-    
+
     const token = uni.getStorageSync('token')
     if (!token) {
       uni.hideLoading()
       return uni.navigateTo({ url: '/pages/login/login' })
+    }
+
+    if (isImageFile(detail.value.file_path)) {
+      const authorized = await ensureAuthorize('writePhotosAlbum')
+      if (!authorized) {
+        uni.hideLoading()
+        return
+      }
     }
 
     uni.downloadFile({
@@ -541,7 +550,7 @@ const canDelete = ref(false)
 
 const checkDeletePermission = () => {
   const userInfo = uni.getStorageSync('userInfo') || {}
-  if (userInfo.role === 'admin') {
+  if (userInfo.role === 'admin' || userInfo.role === 'super_admin') {
     canDelete.value = true
     return
   }
@@ -554,7 +563,7 @@ const checkDeletePermission = () => {
 
 const canDeleteReview = (review) => {
   const userInfo = uni.getStorageSync('userInfo') || {}
-  return review.user_id === userInfo.id || userInfo.role === 'admin'
+  return review.user_id === userInfo.id || userInfo.role === 'admin' || userInfo.role === 'super_admin'
 }
 
 const toggleReviewLike = async (review) => {

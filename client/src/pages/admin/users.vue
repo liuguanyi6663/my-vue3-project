@@ -27,16 +27,16 @@
           <text class="stat-label">总用户</text>
         </view>
         <view class="stat-item">
+          <text class="stat-num">{{ superAdminCount }}</text>
+          <text class="stat-label">超级管理员</text>
+        </view>
+        <view class="stat-item">
           <text class="stat-num">{{ adminCount }}</text>
           <text class="stat-label">管理员</text>
         </view>
         <view class="stat-item">
           <text class="stat-num">{{ studentCount }}</text>
           <text class="stat-label">学生</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-num">{{ bannedCount }}</text>
-          <text class="stat-label">已禁言</text>
         </view>
       </view>
 
@@ -52,7 +52,7 @@
             <view class="user-basic">
               <view class="user-name-row">
                 <text class="user-nickname">{{ item.nickname || '未设置' }}</text>
-                <text class="role-tag" :class="item.role">{{ item.role === 'admin' ? '管理员' : '学生' }}</text>
+                <text class="role-tag" :class="item.role">{{ item.role === 'super_admin' ? '超级管理员' : item.role === 'admin' ? '管理员' : '学生' }}</text>
                 <text class="status-tag" :class="{ banned: item.is_banned === 1, disabled: item.status === 0 }">
                   {{ item.status === 0 ? '已禁用' : item.is_banned === 1 ? '已禁言' : '正常' }}
                 </text>
@@ -108,17 +108,17 @@
           </view>
 
           <view class="user-actions">
-            <button class="btn-sm btn-primary" @click="openEditModal(item)">编辑信息</button>
-            <button class="btn-sm btn-role" :class="{ 'btn-remove-admin': item.role === 'admin' }" @click="toggleRole(item)">
+            <button class="btn-sm btn-primary" @click="openEditModal(item)" v-if="isSuperAdmin || item.role !== 'super_admin'">编辑信息</button>
+            <button class="btn-sm btn-role" :class="{ 'btn-remove-admin': item.role === 'admin' || item.role === 'super_admin' }" @click="toggleRole(item)" v-if="isSuperAdmin && item.role !== 'super_admin'">
               {{ item.role === 'admin' ? '取消管理员' : '设为管理员' }}
             </button>
-            <button class="btn-sm" :class="item.is_banned === 1 ? 'btn-success' : 'btn-warning'" @click="toggleBan(item)">
+            <button class="btn-sm" :class="item.is_banned === 1 ? 'btn-success' : 'btn-warning'" @click="toggleBan(item)" v-if="isSuperAdmin || item.role !== 'super_admin'">
               {{ item.is_banned === 1 ? '解除禁言' : '禁言' }}
             </button>
-            <button class="btn-sm" :class="item.status === 0 ? 'btn-success' : 'btn-danger'" @click="toggleStatus(item)">
+            <button class="btn-sm" :class="item.status === 0 ? 'btn-success' : 'btn-danger'" @click="toggleStatus(item)" v-if="isSuperAdmin || item.role !== 'super_admin'">
               {{ item.status === 0 ? '启用账号' : '禁用账号' }}
             </button>
-            <button class="btn-sm btn-delete" @click="deleteUser(item)">删除账号</button>
+            <button class="btn-sm btn-delete" @click="deleteUser(item)" v-if="isSuperAdmin || item.role !== 'super_admin'">删除账号</button>
           </view>
         </view>
       </view>
@@ -182,7 +182,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/index'
 import { getCurrentYear, formatDate as formatDateUtil } from '@/utils/date'
 
@@ -193,19 +193,22 @@ const page = ref(1)
 const pageSize = ref(10)
 const totalPages = ref(1)
 const totalUsers = ref(0)
+const superAdminCount = ref(0)
 const adminCount = ref(0)
 const studentCount = ref(0)
 const bannedCount = ref(0)
 const keyword = ref('')
 const roleIndex = ref(0)
-const roleOptions = ['全部', '学生', '管理员']
-const roleMap = { 0: null, 1: 'student', 2: 'admin' }
+const roleOptions = ['全部', '学生', '管理员', '超级管理员']
+const roleMap = { 0: null, 1: 'student', 2: 'admin', 3: 'super_admin' }
 
 const showEditModal = ref(false)
 const editForm = ref({})
 const editingUserId = ref(null)
 
 const currentUser = ref(null)
+
+const isSuperAdmin = computed(() => currentUser.value && currentUser.value.role === 'super_admin')
 
 const loadCurrentUser = () => {
   const user = uni.getStorageSync('userInfo')
@@ -240,6 +243,9 @@ const loadCounts = async () => {
   try {
     const allRes = await adminApi.getUsers({ page: 1, pageSize: 1 })
     if (allRes.code === 200) totalUsers.value = allRes.data.total || 0
+
+    const superAdminRes = await adminApi.getUsers({ role: 'super_admin', page: 1, pageSize: 1 })
+    if (superAdminRes.code === 200) superAdminCount.value = superAdminRes.data.total || 0
 
     const adminRes = await adminApi.getUsers({ role: 'admin', page: 1, pageSize: 1 })
     if (adminRes.code === 200) adminCount.value = adminRes.data.total || 0
@@ -344,6 +350,10 @@ const toggleRole = (user) => {
 }
 
 const toggleBan = (user) => {
+  if (currentUser.value && user.id === currentUser.value.id) {
+    uni.showToast({ title: '不能禁言自己', icon: 'none' })
+    return
+  }
   const newBanned = user.is_banned === 1 ? 0 : 1
   const label = newBanned === 1 ? '禁言' : '解除禁言'
   uni.showModal({
@@ -607,6 +617,10 @@ onMounted(() => {
 
 .role-tag.admin {
   background: #ff9500;
+}
+
+.role-tag.super_admin {
+  background: #c53030;
 }
 
 .role-tag.student {

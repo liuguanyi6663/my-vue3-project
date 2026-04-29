@@ -64,7 +64,8 @@ router.post('/login', async (req, res) => {
         college: user.college,
         major: user.major,
         student_id: user.student_id,
-        role: user.role
+        role: user.role,
+        is_banned: user.is_banned || 0
       }
     }, '登录成功'))
   } catch (err) {

@@ -69,7 +69,7 @@
         <text class="timeline-year">{{ currentYear }}</text>
         <text class="timeline-label">Year</text>
       </view>
-      <scroll-view scroll-x class="timeline-scroll" show-scrollbar="false" @scroll="onTimelineScroll">
+      <scroll-view scroll-x class="timeline-scroll" show-scrollbar="false" @scroll="onTimelineScroll" :scroll-left="timelineScrollLeft" scroll-with-animation>
         <view class="timeline-bar">
           <!-- 当年节点 -->
           <view class="timeline-period">
@@ -151,29 +151,6 @@
 
 
 
-    <view class="experience-section card">
-      <view class="section-header">
-        <text class="section-title">热门经验帖</text>
-      </view>
-      <view v-if="loading" class="loading-state">
-        <text>加载中...</text>
-      </view>
-      <view v-else-if="experiencePosts.length === 0" class="empty-state">
-        <text class="empty-text">暂无经验帖</text>
-        <text class="empty-hint">快去论坛分享你的考研经验吧~</text>
-      </view>
-      <view v-else class="experience-list">
-        <view v-for="(post, index) in experiencePosts" :key="post.id || index" class="experience-item" @click="goPostDetail(post.id)">
-          <text class="post-number" :class="{ 'top-three': index < 3 }">{{ index < 3 ? '🔥' : '' }}{{ index + 1 }}</text>
-          <text class="post-title">{{ post.title }}</text>
-          <view class="post-stats">
-            <text class="stat-item">🤍 {{ post.like_count || 0 }}</text>
-            <text class="stat-item">💬 {{ post.comment_count || 0 }}</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <!-- 消息通知栏 -->
     <view class="notification-section card">
       <view class="section-header">
@@ -197,6 +174,29 @@
       </view>
     </view>
 
+    <view class="experience-section card">
+      <view class="section-header">
+        <text class="section-title">热门经验帖</text>
+      </view>
+      <view v-if="loading" class="loading-state">
+        <text>加载中...</text>
+      </view>
+      <view v-else-if="experiencePosts.length === 0" class="empty-state">
+        <text class="empty-text">暂无经验帖</text>
+        <text class="empty-hint">快去论坛分享你的考研经验吧~</text>
+      </view>
+      <view v-else class="experience-list">
+        <view v-for="(post, index) in experiencePosts" :key="post.id || index" class="experience-item" @click="goPostDetail(post.id)">
+          <text class="post-number" :class="{ 'top-three': index < 3 }">{{ index < 3 ? '🔥' : '' }}{{ index + 1 }}</text>
+          <text class="post-title">{{ post.title }}</text>
+          <view class="post-stats">
+            <text class="stat-item">🤍 {{ post.like_count || 0 }}</text>
+            <text class="stat-item">💬 {{ post.comment_count || 0 }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <!-- 底部安全区域 -->
     <view style="height: 120rpx;"></view>
   </view>
@@ -209,12 +209,14 @@ import { getCurrentYear, getKaoyanYear, getKaoyanTargetDate, formatRelativeTime,
 
 const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 let timer = null
+let timelineTimer = null
 
 const experiencePosts = ref([])
 const loading = ref(false)
 
 const kaoyanYear = getKaoyanYear()
 const currentYear = ref(getCurrentYear())
+const timelineScrollLeft = ref(0)
 const dailyQuote = ref('坚持就是胜利，考研必胜！')
 const ads = ref([])
 const screens = ref([])
@@ -288,6 +290,28 @@ const onTimelineScroll = (e) => {
   } else {
     currentYear.value = kaoyanYear - 1
   }
+}
+
+const getTimelineProgress = (date = new Date()) => {
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+
+  if (month >= 3 && month <= 6) return 0
+  if (month >= 8 && month <= 9) return 1
+  if (month === 10) return 2
+  if (month === 11) return 3
+  if (month === 12) return 4
+  if (month === 1 || month === 2) return 5
+  if (month === 3 && day <= 10) return 6
+  if (month === 3 && day <= 20) return 7
+  return 8
+}
+
+const syncTimelineWithSystemTime = () => {
+  const progress = getTimelineProgress(getTimeSeed())
+  const stepWidth = 260
+  timelineScrollLeft.value = progress * stepWidth
+  currentYear.value = progress <= 4 ? kaoyanYear - 1 : kaoyanYear
 }
 
 const loadNotifications = async () => {
@@ -420,6 +444,7 @@ const loadDailyQuote = async () => {
 
 onMounted(() => {
   updateCountdown()
+  syncTimelineWithSystemTime()
   loadHotPosts()
   loadDailyQuote()
   loadAds()
@@ -427,6 +452,7 @@ onMounted(() => {
   loadNotifications()
   
   timer = setInterval(updateCountdown, 1000)
+  timelineTimer = setInterval(syncTimelineWithSystemTime, 60 * 1000)
   
   setDailyQuoteRefresh()
 })
@@ -451,6 +477,7 @@ const setDailyQuoteRefresh = () => {
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  if (timelineTimer) clearInterval(timelineTimer)
 })
 </script>
 

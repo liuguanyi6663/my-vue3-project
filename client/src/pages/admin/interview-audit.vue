@@ -104,6 +104,12 @@
               <button class="action-btn approve" @click.stop="auditItem(item, 'approved')">通过</button>
               <button class="action-btn reject" @click.stop="auditItem(item, 'rejected')">拒绝</button>
             </view>
+            <view class="card-actions" v-else-if="item.audit_status === 'rejected'">
+              <button class="action-btn approve" @click.stop="auditItem(item, 'approved')">修改成通过</button>
+            </view>
+            <view class="card-actions" v-else-if="item.audit_status === 'approved'">
+              <button class="action-btn reject" @click.stop="auditItem(item, 'rejected')">修改成拒绝</button>
+            </view>
           </view>
         </view>
 
@@ -133,6 +139,7 @@ const categoryTabs = [
 ]
 
 const statusTabs = [
+  { label: '全部', value: '' },
   { label: '待审核', value: 'pending' },
   { label: '已通过', value: 'approved' },
   { label: '已拒绝', value: 'rejected' }
@@ -145,7 +152,7 @@ const statusText = {
 }
 
 const currentCategory = ref('')
-const currentStatus = ref('pending')
+const currentStatus = ref('')
 const list = ref([])
 const loading = ref(false)
 const loadingMore = ref(false)

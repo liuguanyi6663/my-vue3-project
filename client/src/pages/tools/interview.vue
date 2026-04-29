@@ -265,7 +265,7 @@ const loadUserInfo = () => {
   }
 }
 
-const isAdmin = () => userInfo.value?.role === 'admin'
+const isAdmin = () => userInfo.value?.role === 'admin' || userInfo.value?.role === 'super_admin'
 
 const canDeleteOral = (q) => {
   if (!userInfo.value) return false
@@ -406,7 +406,12 @@ const uploadResumeDoc = () => {
         }
       })
     },
-    fail: () => {
+    fail: (err) => {
+      const msg = err?.errMsg || ''
+      if (msg.includes('cancel')) {
+        return
+      }
+      console.warn('chooseMessageFile fail:', err)
       uni.chooseFile({
         count: 1,
         type: 'file',
@@ -451,10 +456,12 @@ const downloadTemplate = (tpl) => {
   const url = `http://127.0.0.1:3000/api/interview/resume-templates/${tpl.id}/download`
   const token = uni.getStorageSync('token')
   
+  uni.showLoading({ title: '下载中...' })
   uni.downloadFile({
     url: url,
     header: { 'Authorization': `Bearer ${token}` },
     success: (res) => {
+      uni.hideLoading()
       if (res.statusCode === 200) {
         uni.openDocument({
           filePath: res.tempFilePath,
@@ -468,8 +475,10 @@ const downloadTemplate = (tpl) => {
         uni.showToast({ title: '下载失败', icon: 'none' })
       }
     },
-    fail: () => {
-      uni.showToast({ title: '下载失败', icon: 'none' })
+    fail: (err) => {
+      uni.hideLoading()
+      console.error('下载失败:', err)
+      uni.showToast({ title: '下载失败，请检查网络', icon: 'none' })
     }
   })
 }
@@ -542,7 +551,12 @@ const uploadEmailDoc = () => {
         }
       })
     },
-    fail: () => {
+    fail: (err) => {
+      const msg = err?.errMsg || ''
+      if (msg.includes('cancel')) {
+        return
+      }
+      console.warn('chooseMessageFile fail:', err)
       uni.chooseFile({
         count: 1,
         type: 'file',
@@ -581,11 +595,13 @@ const uploadEmailDoc = () => {
 const downloadEmailTemplate = (tpl) => {
   const url = `http://127.0.0.1:3000/api/interview/email-templates/${tpl.id}/download`
   const token = uni.getStorageSync('token')
-  
+
+  uni.showLoading({ title: '下载中...' })
   uni.downloadFile({
     url: url,
     header: { 'Authorization': `Bearer ${token}` },
     success: (res) => {
+      uni.hideLoading()
       if (res.statusCode === 200) {
         uni.openDocument({
           filePath: res.tempFilePath,
@@ -599,8 +615,10 @@ const downloadEmailTemplate = (tpl) => {
         uni.showToast({ title: '下载失败', icon: 'none' })
       }
     },
-    fail: () => {
-      uni.showToast({ title: '下载失败', icon: 'none' })
+    fail: (err) => {
+      uni.hideLoading()
+      console.error('下载失败:', err)
+      uni.showToast({ title: '下载失败，请检查网络', icon: 'none' })
     }
   })
 }
@@ -627,14 +645,16 @@ const deleteEmailTemplateItem = (tpl) => {
 const copyAnswer = (q) => {
   uni.setClipboardData({
     data: q.reference_answer,
-    success: () => uni.showToast({ title: '已复制', icon: 'success' })
+    success: () => uni.showToast({ title: '已复制', icon: 'success' }),
+    fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' })
   })
 }
 
 const copyEmail = (email) => {
   uni.setClipboardData({
     data: email.content,
-    success: () => uni.showToast({ title: '已复制到剪贴板', icon: 'success' })
+    success: () => uni.showToast({ title: '已复制到剪贴板', icon: 'success' }),
+    fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' })
   })
 }
 

@@ -66,7 +66,7 @@
           <text class="menu-arrow">></text>
         </view>
         
-        <view class="menu-item" @click="goPage('/pages/forum/index')">
+        <view class="menu-item" @click="goPage('/pages/mine/my-posts')">
           <text class="menu-icon">💬</text>
           <text class="menu-label">我的帖子</text>
           <text class="menu-arrow">></text>
@@ -113,19 +113,13 @@
           <text class="menu-arrow">></text>
         </view>
         
-        <view class="menu-item" @click="showSettings = true">
-          <text class="menu-icon">⚙️</text>
-          <text class="menu-label">消息通知</text>
-          <text class="menu-arrow">></text>
-        </view>
-        
         <view class="menu-item" @click="goFeedback">
           <text class="menu-icon">💭</text>
           <text class="menu-label">意见反馈</text>
           <text class="menu-arrow">></text>
         </view>
         
-        <view class="menu-item" v-if="userInfo && userInfo.role === 'admin'" @click="goPage('/pages/admin/index')">
+        <view class="menu-item" v-if="userInfo && (userInfo.role === 'admin' || userInfo.role === 'super_admin')" @click="goPage('/pages/admin/index')">
           <text class="menu-icon">🛠️</text>
           <text class="menu-label" style="color: #4CAF50;">管理后台</text>
           <text class="menu-arrow">></text>
@@ -238,11 +232,10 @@ const goLoginOrProfile = () => {
 }
 
 const goFeedback = () => {
-  uni.showModal({
-    title: '意见反馈',
-    content: '如有问题或建议，请联系管理员',
-    showCancel: false
-  })
+  if (!userInfo.value) {
+    return uni.navigateTo({ url: '/pages/login/login' })
+  }
+  uni.navigateTo({ url: '/pages/mine/feedback' })
 }
 
 const logout = () => {

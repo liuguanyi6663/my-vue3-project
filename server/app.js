@@ -12,6 +12,7 @@ const messageRoutes = require('./routes/message')
 const recordRoutes = require('./routes/record')
 const nationalLineRoutes = require('./routes/national-line')
 const interviewRoutes = require('./routes/interview')
+const feedbackRoutes = require('./routes/feedback')
 
 const app = express()
 
@@ -46,6 +47,7 @@ app.use('/api/message', messageRoutes)
 app.use('/api/record', recordRoutes)
 app.use('/api/national-line', nationalLineRoutes)
 app.use('/api/interview', interviewRoutes)
+app.use('/api/feedback', feedbackRoutes)
 
 app.get('/', (req, res) => {
   res.json({ code: 200, msg: '考研小程序API服务运行中', data: null })

@@ -406,7 +406,7 @@ router.delete('/reviews/:reviewId', auth, async (req, res) => {
     if (review.length === 0) return res.json(error('评论不存在'))
 
     const r = review[0]
-    if (r.user_id !== req.user.id && req.user.role !== 'admin') {
+    if (r.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('只能删除自己的评论'))
     }
 
@@ -493,7 +493,7 @@ router.post('/:id/like', auth, async (req, res) => {
 
 router.delete('/admin/:id', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('权限不足'))
     }
     
@@ -519,7 +519,7 @@ router.delete('/:id', auth, async (req, res) => {
     if (material.length === 0) return res.json(error('资料不存在'))
     
     const m = material[0]
-    if (m.uploader_id !== req.user.id && req.user.role !== 'admin') {
+    if (m.uploader_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('只能删除自己的资料'))
     }
     

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `target_school` VARCHAR(200) DEFAULT NULL COMMENT '目标院校',
   `target_major` VARCHAR(100) DEFAULT NULL COMMENT '目标专业',
   `exam_year` YEAR DEFAULT NULL COMMENT '考研年份',
-  `role` ENUM('student','admin') DEFAULT 'student' COMMENT '角色',
+  `role` ENUM('student','admin','super_admin') DEFAULT 'student' COMMENT '角色',
   `status` TINYINT DEFAULT 1 COMMENT '状态 1正常 0禁用',
   `is_banned` TINYINT DEFAULT 0 COMMENT '是否禁言',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -489,3 +489,16 @@ CREATE TABLE IF NOT EXISTS `email_templates_user` (
   INDEX `idx_user` (`user_id`),
   INDEX `idx_audit_status` (`audit_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户上传邮件模板表';
+
+CREATE TABLE IF NOT EXISTS `feedbacks` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '反馈用户ID',
+  `content` TEXT NOT NULL COMMENT '反馈内容',
+  `status` ENUM('pending','processed') DEFAULT 'pending' COMMENT '处理状态',
+  `handler_id` INT DEFAULT NULL COMMENT '处理人ID',
+  `handle_result` TEXT COMMENT '处理结果',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `handled_at` DATETIME DEFAULT NULL,
+  INDEX `idx_user` (`user_id`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表';

@@ -135,7 +135,7 @@ const getCurrentUser = () => {
 
 const isAdmin = () => {
   const user = getCurrentUser()
-  return user.role === 'admin'
+  return user.role === 'admin' || user.role === 'super_admin'
 }
 
 // 处理列表中的匿名显示

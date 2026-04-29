@@ -58,6 +58,9 @@ router.get('/history/:userId', auth, async (req, res) => {
 
 router.post('/send', auth, async (req, res) => {
   try {
+    if (req.user.is_banned === 1) {
+      return res.json({ code: 403, msg: '你已被禁言，请联系管理员解决', data: null })
+    }
     const { receiver_id, content } = req.body
     if (!receiver_id || !content || !content.trim()) {
       return res.json(error('请填写完整信息'))

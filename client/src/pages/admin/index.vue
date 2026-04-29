@@ -21,6 +21,12 @@
           <text class="menu-arrow">></text>
         </view>
 
+        <view class="menu-item" @click="goPage('/pages/admin/kaoyan-export')">
+          <text class="menu-icon">📊</text>
+          <text class="menu-label">考研数据导出</text>
+          <text class="menu-arrow">></text>
+        </view>
+
         <view class="menu-item" @click="goPage('/pages/admin/notice')">
           <text class="menu-icon">📢</text>
           <text class="menu-label">信息发布</text>
@@ -42,6 +48,12 @@
         <view class="menu-item" @click="goPage('/pages/admin/interview-audit')">
           <text class="menu-icon">📋</text>
           <text class="menu-label">复试资料审批</text>
+          <text class="menu-arrow">></text>
+        </view>
+
+        <view class="menu-item" @click="goPage('/pages/admin/feedback')">
+          <text class="menu-icon">💭</text>
+          <text class="menu-label">意见反应栏</text>
           <text class="menu-arrow">></text>
         </view>
       </view>
@@ -70,7 +82,7 @@ const loadUserInfo = () => {
   const user = uni.getStorageSync('userInfo')
   userInfo.value = user
   
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
     uni.showToast({ 
       title: '权限不足', 
       icon: 'none' 

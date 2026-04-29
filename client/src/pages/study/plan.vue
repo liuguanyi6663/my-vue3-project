@@ -131,9 +131,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { studyApi } from '@/api/index'
-import { getTimeSeed } from '@/utils/date'
+import { getTimeSeed, formatDate } from '@/utils/date'
 
-const currentDate = ref(getTimeSeed().toISOString().split('T')[0])
+const currentDate = ref(formatDate(getTimeSeed()))
 const plans = ref([])
 const templates = ref([])
 const loading = ref(false)
@@ -155,7 +155,7 @@ const checkinData = ref({
 })
 
 const isToday = computed(() => {
-  return currentDate.value === getTimeSeed().toISOString().split('T')[0]
+  return currentDate.value === formatDate(getTimeSeed())
 })
 
 const getSubjectClass = (subject) => {
@@ -187,11 +187,11 @@ const loadTemplates = async () => {
 const changeDate = (days) => {
   const date = new Date(currentDate.value)
   date.setDate(date.getDate() + days)
-  currentDate.value = date.toISOString().split('T')[0]
+  currentDate.value = formatDate(date)
 }
 
 const goToday = () => {
-  currentDate.value = getTimeSeed().toISOString().split('T')[0]
+  currentDate.value = formatDate(getTimeSeed())
 }
 
 const addPlan = async () => {

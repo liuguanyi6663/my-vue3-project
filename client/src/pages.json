@@ -75,6 +75,12 @@
       }
     },
     {
+      "path": "pages/mine/my-posts",
+      "style": {
+        "navigationBarTitleText": "我的帖子"
+      }
+    },
+    {
       "path": "pages/mine/profile",
       "style": {
         "navigationBarTitleText": "个人信息"
@@ -198,6 +204,24 @@
       "path": "pages/admin/interview-audit",
       "style": {
         "navigationBarTitleText": "复试资料审批"
+      }
+    },
+    {
+      "path": "pages/mine/feedback",
+      "style": {
+        "navigationBarTitleText": "意见反馈"
+      }
+    },
+    {
+      "path": "pages/admin/feedback",
+      "style": {
+        "navigationBarTitleText": "意见反应栏"
+      }
+    },
+    {
+      "path": "pages/admin/kaoyan-export",
+      "style": {
+        "navigationBarTitleText": "考研数据导出"
       }
     }
   ],

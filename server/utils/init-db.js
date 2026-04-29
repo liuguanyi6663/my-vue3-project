@@ -17,7 +17,7 @@ const initDatabase = async () => {
         target_school VARCHAR(200) DEFAULT NULL,
         target_major VARCHAR(100) DEFAULT NULL,
         exam_year YEAR DEFAULT NULL,
-        role ENUM('student', 'admin') DEFAULT 'student',
+        role ENUM('student', 'admin', 'super_admin') DEFAULT 'student',
         status TINYINT DEFAULT 1,
         is_banned TINYINT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -46,10 +46,9 @@ const initDatabase = async () => {
     }
 
     const roleColumn = columns.find(c => c.Field === 'role')
-    if (roleColumn && roleColumn.Type && !roleColumn.Type.includes('student')) {
-      await db.query("UPDATE users SET role='student' WHERE role='user'")
-      await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('student','admin') DEFAULT 'student'")
-      console.log('✅ role字段枚举迁移完成')
+    if (roleColumn && roleColumn.Type && !roleColumn.Type.includes('super_admin')) {
+      await db.query("ALTER TABLE users MODIFY COLUMN role ENUM('student','admin','super_admin') DEFAULT 'student'")
+      console.log('✅ role字段枚举迁移完成，已添加super_admin')
     }
 
     await db.query(`
@@ -394,6 +393,22 @@ const initDatabase = async () => {
         INDEX idx_audit_status (audit_status),
         FOREIGN KEY (user_id) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户上传邮件模板表'
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS feedbacks (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL COMMENT '反馈用户ID',
+        content TEXT NOT NULL COMMENT '反馈内容',
+        status ENUM('pending','processed') DEFAULT 'pending' COMMENT '处理状态',
+        handler_id INT DEFAULT NULL COMMENT '处理人ID',
+        handle_result TEXT COMMENT '处理结果',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        handled_at DATETIME DEFAULT NULL,
+        INDEX idx_user (user_id),
+        INDEX idx_status (status),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表'
     `)
 
     console.log('✅ 数据库表初始化完成')

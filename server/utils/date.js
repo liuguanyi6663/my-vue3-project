@@ -1,5 +1,10 @@
 const getTimeSeed = () => new Date()
 
+const formatLocalDate = (date = getTimeSeed()) => {
+  const d = date instanceof Date ? date : new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const getCurrentYear = () => getTimeSeed().getFullYear()
 
 const getRecentYears = (n = 4) => {
@@ -27,10 +32,11 @@ const getKaoyanTargetDate = () => {
   return new Date(`${kaoyanYear - 1}-12-26T08:30:00`)
 }
 
-const getTodayStr = () => getTimeSeed().toISOString().split('T')[0]
+const getTodayStr = () => formatLocalDate()
 
 module.exports = {
   getTimeSeed,
+  formatLocalDate,
   getCurrentYear,
   getRecentYears,
   getKaoyanYear,

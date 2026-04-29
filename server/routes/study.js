@@ -3,7 +3,55 @@ const router = express.Router()
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth } = require('../middleware/auth')
-const { getTimeSeed, getCurrentYear, getTodayStr } = require('../utils/date')
+const { getTimeSeed, getCurrentYear, getTodayStr, formatLocalDate } = require('../utils/date')
+
+const parseDateOnly = (dateStr) => {
+  const [year, month, day] = String(dateStr).split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const getDateDiffDays = (later, earlier) => {
+  const laterDate = parseDateOnly(later)
+  const earlierDate = parseDateOnly(earlier)
+  return Math.round((laterDate - earlierDate) / (1000 * 60 * 60 * 24))
+}
+
+const buildStreakStats = (dateRows) => {
+  const dateStrings = dateRows.map((item) => formatLocalDate(item.checkin_date))
+  if (dateStrings.length === 0) {
+    return { currentStreak: 0, maxStreak: 0 }
+  }
+
+  let maxStreak = 1
+  let tempStreak = 1
+
+  for (let i = 1; i < dateStrings.length; i++) {
+    if (getDateDiffDays(dateStrings[i - 1], dateStrings[i]) === 1) {
+      tempStreak += 1
+      if (tempStreak > maxStreak) maxStreak = tempStreak
+    } else {
+      tempStreak = 1
+    }
+  }
+
+  const today = getTodayStr()
+  const dateSet = new Set(dateStrings)
+  let currentStreak = 0
+  let cursor = today
+
+  while (dateSet.has(cursor)) {
+    currentStreak += 1
+    const cursorDate = parseDateOnly(cursor)
+    cursorDate.setDate(cursorDate.getDate() - 1)
+    cursor = formatLocalDate(cursorDate)
+  }
+
+  if (currentStreak === 0) {
+    currentStreak = maxStreak
+  }
+
+  return { currentStreak, maxStreak }
+}
 
 router.get('/plans', auth, async (req, res) => {
   try {
@@ -110,53 +158,46 @@ router.get('/checkins', auth, async (req, res) => {
     
     const calendar = {}
     checkins.forEach(c => {
-      calendar[c.checkin_date] = c.count
+      calendar[formatLocalDate(c.checkin_date)] = c.count
     })
-    
-    let currentStreak = 0
-    let maxStreak = 0
-    let tempStreak = 0
-    
+
+    const monthRecords = await db.query(
+      `SELECT checkin_date, subject, task_name, duration, remark
+       FROM study_checkins
+       WHERE user_id=? AND YEAR(checkin_date)=? AND MONTH(checkin_date)=?
+       ORDER BY checkin_date DESC, created_at DESC`,
+      [req.user.id, targetYear, targetMonth]
+    )
+
+    const recordsByDate = {}
+    monthRecords.forEach((item) => {
+      const dateKey = formatLocalDate(item.checkin_date)
+      if (!recordsByDate[dateKey]) {
+        recordsByDate[dateKey] = []
+      }
+      recordsByDate[dateKey].push({
+        subject: item.subject,
+        task_name: item.task_name,
+        duration: item.duration,
+        remark: item.remark
+      })
+    })
+
     const allCheckinDates = await db.query(
       'SELECT DISTINCT checkin_date FROM study_checkins WHERE user_id=? ORDER BY checkin_date DESC',
       [req.user.id]
     )
-    
-    for (let i = 0; i < allCheckinDates.length; i++) {
-      const d = allCheckinDates[i].checkin_date
-      if (i === 0) {
-        const today = getTimeSeed()
-        const checkDate = new Date(d)
-        const diffDays = Math.floor((today - checkDate) / (1000 * 60 * 60 * 24))
-        if (diffDays <= 1) {
-          currentStreak = 1
-          tempStreak = 1
-        }
-      } else {
-        const prevDate = new Date(allCheckinDates[i-1].checkin_date)
-        const currDate = new Date(d)
-        const diffDays = Math.floor((prevDate - currDate) / (1000 * 60 * 60 * 24))
-        if (diffDays === 1) {
-          tempStreak++
-          if (currentStreak > 0) currentStreak++
-        } else {
-          if (tempStreak > maxStreak) maxStreak = tempStreak
-          tempStreak = 1
-          if (i > 0 && currentStreak > maxStreak) maxStreak = currentStreak
-          currentStreak = 0
-        }
-      }
-    }
-    if (tempStreak > maxStreak) maxStreak = tempStreak
-    if (currentStreak > maxStreak) maxStreak = currentStreak
-    
+
+    const { currentStreak, maxStreak } = buildStreakStats(allCheckinDates)
+
     const stats = await db.query(
-      'SELECT COUNT(*) as total_days, SUM(duration) as total_minutes FROM study_checkins WHERE user_id=?',
+      'SELECT COUNT(DISTINCT checkin_date) as total_days, SUM(duration) as total_minutes FROM study_checkins WHERE user_id=?',
       [req.user.id]
     )
     
     res.json(success({
       calendar,
+      recordsByDate,
       stats: {
         totalDays: stats[0].total_days || 0,
         totalMinutes: stats[0].total_minutes || 0,

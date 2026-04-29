@@ -1,6 +1,10 @@
 <template>
   <view class="page">
-    <view class="form-card card">
+    <view v-if="isBanned" class="banned-notice card">
+      <text class="banned-icon">🔇</text>
+      <text class="banned-text">你已被禁言，请联系管理员解决</text>
+    </view>
+    <view class="form-card card" v-else>
       <!-- 匿名树洞提示 -->
       <view v-if="isTreeholeMode" class="treehole-tip">
         <text class="tip-icon">🌳</text>
@@ -105,12 +109,32 @@ const categories = [
   { label: '匿名树洞', value: 'treehole' }
 ]
 
-const isTreeholeMode = ref(false) // 是否是匿名树洞模式
+const isTreeholeMode = ref(false)
+const isBanned = ref(false)
 const selectedCategoryIndex = ref(-1) // 选中的索引
 const images = ref([])
 const submitting = ref(false)
+const isLoggedIn = ref(false)
 
 onMounted(() => {
+  try {
+    const raw = uni.getStorageSync('userInfo')
+    let info = raw
+    if (typeof raw === 'string') {
+      info = JSON.parse(raw)
+    }
+    if (info) {
+      isLoggedIn.value = true
+      if (info.is_banned === 1) {
+        isBanned.value = true
+      }
+    } else {
+      isLoggedIn.value = false
+    }
+  } catch (e) {
+    console.error('获取用户信息失败:', e)
+  }
+
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   const options = currentPage?.options || {}
@@ -155,7 +179,24 @@ const onCategoryChange = (e) => {
   selectedCategoryIndex.value = e.detail.value
 }
 
-const chooseImage = () => {
+const chooseImage = async () => {
+  // 检查是否已登录
+  if (!isLoggedIn.value) {
+    uni.showModal({
+      title: '提示',
+      content: '请先登录后再上传图片',
+      confirmText: '去登录',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          uni.navigateTo({ url: '/pages/login/login' })
+        }
+      }
+    })
+    return
+  }
+
+  // 直接选择图片，不需要提前申请权限
   uni.chooseImage({
     count: 9 - images.value.length,
     sizeType: ['compressed'],
@@ -244,6 +285,26 @@ const submitPost = async () => {
 .page {
   min-height: 100vh;
   background: #f5f5f5;
+}
+
+.banned-notice {
+  margin: 20rpx 24rpx;
+  padding: 60rpx 30rpx;
+  text-align: center;
+  background: #fff3e0;
+}
+
+.banned-icon {
+  font-size: 80rpx;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.banned-text {
+  font-size: 30rpx;
+  color: #e65100;
+  font-weight: 500;
+  display: block;
 }
 
 .form-card {

@@ -49,7 +49,7 @@
       <view class="input-bar-spacer"></view>
     </scroll-view>
 
-    <view class="input-bar">
+    <view class="input-bar" v-if="!isBanned">
       <input 
         class="msg-input" 
         v-model="inputText" 
@@ -62,6 +62,9 @@
         {{ sending ? '...' : '发送' }}
       </button>
     </view>
+    <view class="banned-bar" v-else>
+      <text class="banned-bar-text">🔇 你已被禁言，请联系管理员解决</text>
+    </view>
   </view>
 </template>
 
@@ -73,6 +76,7 @@ import { formatChatTime, getTimeSeed } from '@/utils/date'
 
 const messages = ref([])
 const inputText = ref('')
+const isBanned = ref(false)
 const sending = ref(false)
 const loading = ref(false)
 const currentUserId = ref(0)
@@ -110,6 +114,10 @@ const loadMessages = async () => {
 }
 
 const sendMsg = async () => {
+  if (isBanned.value) {
+    uni.showToast({ title: '你已被禁言，请联系管理员解决', icon: 'none' })
+    return
+  }
   if (!inputText.value.trim() || sending.value) return
 
   sending.value = true
@@ -165,6 +173,9 @@ onMounted(() => {
       currentUserId.value = Number(info.id) || 0
       myNickname.value = info.nickname || ''
       myAvatar.value = info.avatar || ''
+      if (info.is_banned === 1) {
+        isBanned.value = true
+      }
     }
     console.log('chat currentUserId:', currentUserId.value, 'myNickname:', myNickname.value)
   } catch (e) {
@@ -332,5 +343,25 @@ onMounted(() => {
   opacity: 0.4;
   background: #07c160;
   color: #fff;
+}
+
+.banned-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+  background: #fff3e0;
+  border-top: 1rpx solid #ffe0b2;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.banned-bar-text {
+  font-size: 28rpx;
+  color: #e65100;
+  font-weight: 500;
 }
 </style>

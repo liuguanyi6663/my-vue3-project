@@ -282,7 +282,7 @@ const singleAudit = async (id, status) => {
       if (res.confirm) {
         try {
           uni.showLoading({ title: '处理中...' })
-          await recordApi.audit(id, { status })
+          await recordApi.audit(id, { audit_status: status })
           uni.hideLoading()
           uni.showToast({ title: '操作成功', icon: 'success' })
           loadList(true)
@@ -309,7 +309,7 @@ const batchAudit = async (status) => {
       if (res.confirm) {
         try {
           uni.showLoading({ title: '批量处理中...' })
-          await recordApi.batchAudit({ ids: selectedIds.value, status })
+          await recordApi.batchAudit({ ids: selectedIds.value, audit_status: status })
           uni.hideLoading()
           uni.showToast({ title: '批量操作成功', icon: 'success' })
           selectedIds.value = []

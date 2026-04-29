@@ -39,11 +39,20 @@ const optionalAuth = async (req, res, next) => {
 
 const adminAuth = (req, res, next) => {
   auth(req, res, () => {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json({ code: 403, msg: '权限不足', data: null })
     }
     next()
   })
 }
 
-module.exports = { auth, optionalAuth, adminAuth }
+const superAdminAuth = (req, res, next) => {
+  auth(req, res, () => {
+    if (req.user.role !== 'super_admin') {
+      return res.json({ code: 403, msg: '仅超级管理员可操作', data: null })
+    }
+    next()
+  })
+}
+
+module.exports = { auth, optionalAuth, adminAuth, superAdminAuth }

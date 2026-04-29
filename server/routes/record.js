@@ -247,11 +247,10 @@ router.put('/update/:id', auth, async (req, res) => {
 // 管理员获取所有学生考研信息
 router.get('/list', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('权限不足'))
     }
-
-    const { status, page = 1, pageSize = 20 } = req.query
+    const { page = 1, pageSize = 20, status, keyword } = req.query
     const offset = (page - 1) * pageSize
 
     let sql = `SELECT r.*, u.nickname, u.phone 
@@ -290,18 +289,17 @@ router.get('/list', auth, async (req, res) => {
 // 管理员审核
 router.put('/audit/:id', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('权限不足'))
     }
-
-    const { status } = req.body
-    if (!['approved', 'rejected'].includes(status)) {
+    const { audit_status } = req.body
+    if (!['approved', 'rejected'].includes(audit_status)) {
       return res.json(error('无效的审核状态'))
     }
 
     await db.query(
       'UPDATE student_kaoyan_records SET status = ? WHERE id = ?',
-      [status, req.params.id]
+      [audit_status, req.params.id]
     )
 
     res.json(success(null, '审核完成'))
@@ -314,26 +312,24 @@ router.put('/audit/:id', auth, async (req, res) => {
 // 管理员批量审核
 router.post('/batch-audit', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.json(error('权限不足'))
     }
-
-    const { ids, status } = req.body
+    const { ids, audit_status } = req.body
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.json(error('请选择要审核的记录'))
     }
-    if (!['approved', 'rejected'].includes(status)) {
+    if (!['approved', 'rejected'].includes(audit_status)) {
       return res.json(error('无效的审核状态'))
     }
 
-    // 使用 IN 语句批量更新
     const placeholders = ids.map(() => '?').join(',')
     await db.query(
       `UPDATE student_kaoyan_records SET status = ? WHERE id IN (${placeholders})`,
-      [status, ...ids]
+      [audit_status, ...ids]
     )
 
-    res.json(success(null, `已成功${status === 'approved' ? '通过' : '拒绝'} ${ids.length} 条记录`))
+    res.json(success(null, `已成功${audit_status === 'approved' ? '通过' : '拒绝'} ${ids.length} 条记录`))
   } catch (err) {
     console.error('批量审核出错:', err)
     res.json(error('批量审核失败: ' + err.message))

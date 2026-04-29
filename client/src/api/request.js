@@ -10,9 +10,12 @@ const request = (options) => {
     // 处理 GET 请求的参数，拼接到 URL 上
     if (options.method === 'GET' && requestData && Object.keys(requestData).length > 0) {
       const queryString = Object.keys(requestData)
+        .filter(key => requestData[key] !== undefined && requestData[key] !== null && requestData[key] !== '')
         .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(requestData[key])}`)
         .join('&')
-      fullUrl = `${fullUrl}?${queryString}`
+      if (queryString) {
+        fullUrl = `${fullUrl}?${queryString}`
+      }
       requestData = {}
     }
     

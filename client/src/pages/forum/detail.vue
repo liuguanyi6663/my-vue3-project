@@ -55,8 +55,13 @@
         <text class="section-title">评论 ({{ processedPost.comment_count }})</text>
       </view>
 
+      <!-- 禁言提示 -->
+      <view class="banned-tip" v-if="isBanned">
+        <text class="banned-tip-text">🔇 你已被禁言，请联系管理员解决</text>
+      </view>
+
       <!-- 评论输入框 -->
-      <view class="comment-input-area" v-if="!showReplyInput">
+      <view class="comment-input-area" v-if="!showReplyInput && !isBanned">
         <textarea
           class="comment-textarea"
           v-model="commentText"
@@ -71,7 +76,7 @@
       </view>
 
       <!-- 回复输入框 -->
-      <view class="reply-input-box" v-if="showReplyInput">
+      <view class="reply-input-box" v-if="showReplyInput && !isBanned">
         <view class="reply-to-info">
           <text>回复 @{{ replyingTo.nickname }}</text>
           <text class="cancel-reply" @click="cancelReply">取消</text>
@@ -201,6 +206,7 @@ import { formatDate as formatDateUtil } from '@/utils/date'
 
 const post = ref(null)
 const commentText = ref('')
+const isBanned = ref(false)
 const showReplyInput = ref(false)
 const replyingTo = ref(null)
 const replyContent = ref('')
@@ -211,7 +217,7 @@ const expandedComments = ref({})
 const isAdmin = computed(() => {
   try {
     const user = JSON.parse(uni.getStorageSync('user') || '{}')
-    return user.role === 'admin'
+    return user.role === 'admin' || user.role === 'super_admin'
   } catch (e) {
     return false
   }
@@ -320,6 +326,10 @@ const submitComment = async () => {
 }
 
 const showReplyBox = (comment, replyTo) => {
+  if (isBanned.value) {
+    uni.showToast({ title: '你已被禁言，请联系管理员解决', icon: 'none' })
+    return
+  }
   const token = uni.getStorageSync('token')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
@@ -380,7 +390,7 @@ const toggleCommentLike = async (comment) => {
 
 const canDeleteComment = (comment) => {
   const userInfo = uni.getStorageSync('userInfo') || {}
-  return comment.user_id === userInfo.id || userInfo.role === 'admin'
+  return comment.user_id === userInfo.id || userInfo.role === 'admin' || userInfo.role === 'super_admin'
 }
 
 const selectReportReason = (reason) => {
@@ -532,6 +542,18 @@ const toggleExpand = (commentId) => {
 }
 
 onMounted(() => {
+  try {
+    const raw = uni.getStorageSync('userInfo')
+    let info = raw
+    if (typeof raw === 'string') {
+      info = JSON.parse(raw)
+    }
+    if (info && info.is_banned === 1) {
+      isBanned.value = true
+    }
+  } catch (e) {
+    console.error('获取用户信息失败:', e)
+  }
   loadPost()
 })
 </script>
@@ -654,6 +676,20 @@ onMounted(() => {
 .comment-section {
   margin: 0 24rpx 20rpx;
   padding: 30rpx;
+}
+
+.banned-tip {
+  background: #fff3e0;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  text-align: center;
+}
+
+.banned-tip-text {
+  font-size: 28rpx;
+  color: #e65100;
+  font-weight: 500;
 }
 
 .section-title {
