@@ -2,6 +2,11 @@ const db = require('./db')
 
 const initDatabase = async () => {
   try {
+    await require('./sensitive-words').initSensitiveWords()
+  } catch (e) {
+    console.log('敏感词初始化跳过')
+  }
+  try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -349,13 +354,6 @@ const initDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `)
 
-    const count = await db.query('SELECT COUNT(*) as cnt FROM sensitive_words')
-    if (count[0].cnt === 0) {
-      await db.query(`INSERT INTO sensitive_words (word) VALUES 
-        ('广告'), ('QQ'), ('微信'), ('加群'), ('代写'), ('作弊'), 
-        ('刷单'), ('兼职'), ('赚钱'), ('色情'), ('赌博'), ('政治')`)
-    }
-
     await db.query(`
       CREATE TABLE IF NOT EXISTS national_lines (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -453,6 +451,38 @@ const initDatabase = async () => {
         INDEX idx_user (user_id),
         INDEX idx_blocked_user (blocked_user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户屏蔽关系表'
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS push_notifications (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL COMMENT '用户ID',
+        type VARCHAR(50) NOT NULL COMMENT '通知类型',
+        title VARCHAR(200) NOT NULL COMMENT '标题',
+        content TEXT COMMENT '内容',
+        data JSON COMMENT '附加数据',
+        is_read TINYINT DEFAULT 0 COMMENT '是否已读',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id),
+        INDEX idx_is_read (is_read),
+        INDEX idx_type (type),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推送通知表'
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reminder_sent_records (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL COMMENT '用户ID',
+        node_id INT NOT NULL COMMENT '时间线节点ID',
+        remind_type VARCHAR(20) NOT NULL COMMENT '提醒类型',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_reminder (user_id, node_id, remind_type, created_at),
+        INDEX idx_user (user_id),
+        INDEX idx_node (node_id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (node_id) REFERENCES timeline_nodes(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提醒发送记录表'
     `)
 
     console.log('✅ 数据库表初始化完成')

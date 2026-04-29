@@ -274,3 +274,11 @@ export const feedbackApi = {
   getStats: () => get('/feedback/stats'),
   delete: (id) => del(`/feedback/${id}`)
 }
+
+export const notificationApi = {
+  getList: (params) => get('/notification/list', params),
+  getUnreadCount: () => get('/notification/unread-count'),
+  markRead: (id) => post(`/notification/mark-read/${id}`),
+  markAllRead: () => post('/notification/mark-all-read'),
+  delete: (id) => del(`/notification/${id}`)
+}

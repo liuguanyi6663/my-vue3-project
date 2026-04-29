@@ -104,6 +104,15 @@
           <text class="menu-arrow">></text>
         </view>
         
+        <view class="menu-item" @click="goPage('/pages/push-notifications/index')">
+          <text class="menu-icon">🔔</text>
+          <text class="menu-label">消息通知</text>
+          <view class="msg-badge" v-if="pushUnreadCount > 0">
+            <text class="badge-text">{{ pushUnreadCount > 99 ? '99+' : pushUnreadCount }}</text>
+          </view>
+          <text class="menu-arrow">></text>
+        </view>
+        
         <view class="menu-item" @click="goPage('/pages/mine/messages')">
           <text class="menu-icon">💬</text>
           <text class="menu-label">我的消息</text>
@@ -145,7 +154,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { userApi, studyApi, materialApi, messageApi, forumApi } from '@/api/index'
+import { userApi, studyApi, materialApi, messageApi, forumApi, notificationApi } from '@/api/index'
 import { getAvatarUrl } from '@/utils/url'
 
 const userInfo = ref(null)
@@ -153,6 +162,7 @@ const stats = ref({})
 const favoriteCount = ref(0)
 const showSettings = ref(false)
 const unreadCount = ref(0)
+const pushUnreadCount = ref(0)
 
 const loadUserInfo = async () => {
   const token = uni.getStorageSync('token')
@@ -271,10 +281,27 @@ const loadUnreadCount = async () => {
   }
 }
 
+const loadPushUnreadCount = async () => {
+  const token = uni.getStorageSync('token')
+  if (!token) {
+    pushUnreadCount.value = 0
+    return
+  }
+  try {
+    const res = await notificationApi.getUnreadCount()
+    if (res.code === 200) {
+      pushUnreadCount.value = res.data.count || 0
+    }
+  } catch (e) {
+    console.error('加载推送未读数失败:', e)
+  }
+}
+
 onShow(() => {
   loadUserInfo()
   loadStats()
   loadUnreadCount()
+  loadPushUnreadCount()
 })
 </script>
 

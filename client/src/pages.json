@@ -189,6 +189,12 @@
       }
     },
     {
+      "path": "pages/push-notifications/index",
+      "style": {
+        "navigationBarTitleText": "消息通知"
+      }
+    },
+    {
       "path": "pages/national-line/index",
       "style": {
         "navigationBarTitleText": "国家线"

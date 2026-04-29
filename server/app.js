@@ -13,6 +13,12 @@ const recordRoutes = require('./routes/record')
 const nationalLineRoutes = require('./routes/national-line')
 const interviewRoutes = require('./routes/interview')
 const feedbackRoutes = require('./routes/feedback')
+const notificationRoutes = require('./routes/notification')
+
+const { initSensitiveWords } = require('./utils/sensitive-words')
+const { cacheMiddleware, CACHE_TTL, invalidateCache } = require('./middleware/cache')
+const { rateLimiter, securityHeaders, sanitizeMiddleware } = require('./middleware/security')
+const timelineReminderService = require('./services/timeline-reminder-service')
 
 const app = express()
 
@@ -20,21 +26,36 @@ app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
-// 添加请求日志
+app.use(securityHeaders)
+app.use(rateLimiter({ windowMs: 60 * 1000, max: 200 }))
+app.use(sanitizeMiddleware)
+
 app.use((req, res, next) => {
-  console.log(`\n=== ${req.method} ${req.url} ===`)
-  console.log('Headers:', JSON.stringify(req.headers, null, 2))
-  console.log('Query:', req.query)
-  console.log('Body:', req.body)
+  const start = Date.now()
+  res.on('finish', () => {
+    const duration = Date.now() - start
+    console.log(`${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`)
+  })
   next()
 })
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '1d',
+  etag: false,
+  lastModified: true
+}))
 
-// 超简单的测试接口 - 放最前面！
 app.get('/api/test', (req, res) => {
-  console.log('✅ /api/test 接口被调用!')
   res.json({ code: 200, msg: '测试成功', data: 'Hello World!' })
+})
+
+app.get('/api/health', (req, res) => {
+  res.json({ code: 200, msg: 'ok', data: { timestamp: Date.now() } })
+})
+
+app.get('/api/cache/stats', (req, res) => {
+  const { cache } = require('./middleware/cache')
+  res.json({ code: 200, data: cache.stats() })
 })
 
 app.use('/api/user', userRoutes)
@@ -48,21 +69,39 @@ app.use('/api/record', recordRoutes)
 app.use('/api/national-line', nationalLineRoutes)
 app.use('/api/interview', interviewRoutes)
 app.use('/api/feedback', feedbackRoutes)
+app.use('/api/notification', notificationRoutes)
 
 app.get('/', (req, res) => {
-  res.json({ code: 200, msg: '考研小程序API服务运行中', data: null })
+  res.json({ code: 200, msg: '考研小程序API服务运行中', data: { timestamp: Date.now() } })
 })
 
 app.use((err, req, res, next) => {
   console.error(err.stack)
-  res.json({ code: 500, msg: err.message || '服务器内部错误', data: null })
+  res.status(500).json({ code: 500, msg: err.message || '服务器内部错误', data: null })
 })
 
 const config = require('./config/index')
 const initDatabase = require('./utils/init-db')
 
-initDatabase().then(() => {
-  app.listen(config.port, () => {
-    console.log(`Server running on http://localhost:${config.port}`)
-  })
-})
+const startServer = async () => {
+  try {
+    await initDatabase()
+    await initSensitiveWords()
+    console.log('✅ 系统初始化完成')
+
+    app.listen(config.port, () => {
+      console.log(`🚀 服务运行在 http://localhost:${config.port}`)
+      
+      try {
+        timelineReminderService.startScheduler(30)
+      } catch (err) {
+        console.warn('⚠️  定时任务启动失败:', err.message)
+      }
+    })
+  } catch (error) {
+    console.error('❌ 服务启动失败:', error.message)
+    process.exit(1)
+  }
+}
+
+startServer()

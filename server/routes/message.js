@@ -3,6 +3,7 @@ const router = express.Router()
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth } = require('../middleware/auth')
+const { notificationService } = require('../services/notification-service')
 
 // 检查是否被对方屏蔽的辅助函数
 const checkBlocked = async (currentUserId, targetUserId) => {
@@ -128,6 +129,19 @@ router.post('/send', auth, async (req, res) => {
       'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
       [req.user.id, receiver_id, content.trim()]
     )
+
+    try {
+      const senderInfo = await db.query('SELECT nickname FROM users WHERE id=?', [req.user.id])
+      if (senderInfo.length > 0) {
+        await notificationService.sendNewMessageNotification(
+          receiver_id,
+          senderInfo[0].nickname || '用户',
+          content
+        )
+      }
+    } catch (notifyErr) {
+      console.warn('发送消息通知失败:', notifyErr.message)
+    }
 
     res.json(success({ id: result.insertId }, '发送成功'))
   } catch (err) {
