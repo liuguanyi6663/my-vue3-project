@@ -475,7 +475,7 @@ onUnmounted(() => {
 .countdown-text {
   font-size: 36rpx;
   font-weight: bold;
-  color: #ff6b6b;
+  color: #c53030;
 }
 
 .countdown-label {
@@ -503,7 +503,7 @@ onUnmounted(() => {
 }
 
 .checkin-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   color: #fff;
   padding: 12rpx 24rpx;
   border-radius: 20rpx;
@@ -725,10 +725,10 @@ onUnmounted(() => {
 }
 
 .timeline-dot.active {
-  background: #4CAF50;
+  background: #c53030;
   width: 24rpx;
   height: 24rpx;
-  box-shadow: 0 0 0 8rpx rgba(76, 175, 80, 0.1);
+  box-shadow: 0 0 0 8rpx rgba(197, 48, 48, 0.1);
 }
 
 
@@ -785,7 +785,7 @@ onUnmounted(() => {
 }
 
 .post-number.top-three {
-  color: #ff6b6b;
+  color: #c53030;
 }
 
 .post-title {

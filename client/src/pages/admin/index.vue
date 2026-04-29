@@ -109,7 +109,7 @@ onMounted(() => {
 }
 
 .admin-header {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   padding: 100rpx 40rpx 60rpx;
   text-align: center;
 }

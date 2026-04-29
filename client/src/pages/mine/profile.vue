@@ -250,7 +250,7 @@ onShow(() => {
 }
 
 .avatar-section {
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -363,7 +363,7 @@ onShow(() => {
 
 .save-btn {
   width: 100%;
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   color: white;
   font-size: 32rpx;
   border-radius: 50rpx;

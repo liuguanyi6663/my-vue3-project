@@ -266,7 +266,7 @@ onShow(() => {
 }
 
 .search-btn {
-  color: #007aff;
+  color: #c53030;
   font-size: 28rpx;
   margin-left: 20rpx;
   padding: 10rpx 20rpx;
@@ -293,7 +293,7 @@ onShow(() => {
 }
 
 .category-item.active {
-  background: #007aff;
+  background: #c53030;
   color: #fff;
 }
 
@@ -312,7 +312,7 @@ onShow(() => {
 }
 
 .sort-item.active {
-  color: #007aff;
+  color: #c53030;
   font-weight: bold;
 }
 
@@ -414,12 +414,12 @@ onShow(() => {
   bottom: 200rpx;
   width: 100rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, #007aff, #00c6ff);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 8rpx 24rpx rgba(0, 122, 255, 0.4);
+  box-shadow: 0 8rpx 24rpx rgba(197, 48, 48, 0.4);
 }
 
 .fab-text {

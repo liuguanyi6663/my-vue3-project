@@ -359,7 +359,7 @@ onShow(() => {
 }
 
 .tab-item.active {
-  background: #007AFF;
+  background: #c53030;
   color: #fff;
 }
 
@@ -377,7 +377,7 @@ onShow(() => {
 }
 
 .sort-item.active {
-  color: #007AFF;
+  color: #c53030;
   font-weight: bold;
 }
 
@@ -503,12 +503,12 @@ onShow(() => {
   bottom: 200rpx;
   width: 100rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, #07c160, #06ad56);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.4);
+  box-shadow: 0 8rpx 24rpx rgba(197, 48, 48, 0.4);
 }
 
 .fab-text {

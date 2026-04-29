@@ -286,7 +286,7 @@ onShow(() => {
 
 .user-card {
   position: relative;
-  background: linear-gradient(135deg, #007AFF, #00c6ff);
+  background: linear-gradient(135deg, #c53030, #9b2c2c);
   padding-bottom: 30rpx;
 }
 
