@@ -217,7 +217,7 @@ const loading = ref(false)
 const kaoyanYear = getKaoyanYear()
 const currentYear = ref(getCurrentYear())
 const timelineScrollLeft = ref(0)
-const dailyQuote = ref('坚持就是胜利，考研必胜！')
+const dailyQuote = ref('进德修业')
 const ads = ref([])
 const screens = ref([])
 const notifications = ref([])
@@ -404,42 +404,8 @@ const loadScreens = async () => {
 }
 
 const loadDailyQuote = async () => {
-  try {
-    // 检查本地存储中的金句和日期
-    const storedQuote = uni.getStorageSync('dailyQuote')
-    const storedDate = uni.getStorageSync('quoteDate')
-    const today = getTimeSeed().toDateString()
-    
-    // 如果今天已经获取过金句，直接使用存储的金句
-    if (storedQuote && storedDate === today) {
-      dailyQuote.value = storedQuote
-      return
-    }
-    
-    // 从后端获取金句
-    const res = await homeApi.getQuote()
-    if (res.data?.quote) {
-      dailyQuote.value = res.data.quote
-      // 存储金句和日期
-      uni.setStorageSync('dailyQuote', res.data.quote)
-      uni.setStorageSync('quoteDate', today)
-    }
-  } catch (e) {
-    console.error('加载每日金句失败:', e)
-    // 使用默认金句
-    const defaultQuotes = [
-      '坚持就是胜利，考研必胜！',
-      '每一份努力都不会白费',
-      '今天的付出，明天的收获',
-      '考研是一场持久战，坚持到最后',
-      '相信自己，你一定可以的！'
-    ]
-    // 根据日期生成一个固定的索引，确保每天显示相同的金句
-    const today = getTimeSeed()
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000)
-    const index = dayOfYear % defaultQuotes.length
-    dailyQuote.value = defaultQuotes[index]
-  }
+  // 固定显示"进德修业"
+  dailyQuote.value = '进德修业'
 }
 
 onMounted(() => {
@@ -526,7 +492,7 @@ onUnmounted(() => {
 }
 
 .quote-text {
-  font-size: 24rpx;
+  font-size: 30rpx;
   color: #666;
   line-height: 1.3;
   overflow: hidden;
