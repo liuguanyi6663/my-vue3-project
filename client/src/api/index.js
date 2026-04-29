@@ -186,7 +186,10 @@ export const messageApi = {
   getConversations: () => get('/message/conversations'),
   getHistory: (userId) => get(`/message/history/${userId}`),
   send: (data) => post('/message/send', data),
-  getUnreadCount: () => get('/message/unread-count')
+  getUnreadCount: () => get('/message/unread-count'),
+  blockUser: (blocked_user_id) => post('/message/block', { blocked_user_id }),
+  unblockUser: (blocked_user_id) => post('/message/unblock', { blocked_user_id }),
+  checkBlock: (userId) => get(`/message/check-block/${userId}`)
 }
 
 export const nationalLineApi = {

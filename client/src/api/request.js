@@ -44,7 +44,7 @@ const request = (options) => {
             uni.navigateTo({ url: '/pages/login/login' })
             reject(res.data)
           } else {
-            uni.showToast({ title: res.data.msg || '请求失败', icon: 'none' })
+            // 不自动显示Toast，让调用方处理
             reject(res.data)
           }
         } else {

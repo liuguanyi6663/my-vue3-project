@@ -34,6 +34,23 @@
         <view class="line"></view>
       </view>
 
+      <!-- #ifdef MP-WEIXIN -->
+      <button 
+        open-type="getPhoneNumber"
+        class="phone-btn"
+        @getphonenumber="handleGetPhoneNumber"
+      >
+        <text class="phone-icon">📱</text>
+        获取手机号快速登录
+      </button>
+
+      <view class="divider">
+        <view class="line"></view>
+        <text class="divider-text">或</text>
+        <view class="line"></view>
+      </view>
+      <!-- #endif -->
+
       <button 
         class="wechat-btn"
         @click="handleWechatLogin"
@@ -101,6 +118,77 @@ const handleLogin = async () => {
   }
 }
 
+const handleGetPhoneNumber = async (e) => {
+  if (!agreed.value) {
+    return uni.showToast({ title: '请先同意用户协议', icon: 'none' })
+  }
+  
+  // #ifdef MP-WEIXIN
+  if (e.detail.errMsg === 'getPhoneNumber:ok' && e.detail.code) {
+    try {
+      uni.showLoading({ title: '登录中...' })
+      
+      // 先用微信登录获取 code
+      const loginRes = await new Promise((resolve, reject) => {
+        uni.login({
+          provider: 'weixin',
+          success: resolve,
+          fail: reject
+        })
+      })
+      
+      // 获取用户昵称和头像
+      let userInfoData = {}
+      
+      try {
+        const profileRes = await new Promise((resolve, reject) => {
+          uni.getUserProfile({
+            desc: '用于完善用户资料',
+            success: resolve,
+            fail: (err) => {
+              console.log('获取用户信息失败:', err)
+              resolve(null)
+            }
+          })
+        })
+        
+        if (profileRes && profileRes.userInfo) {
+          userInfoData = {
+            nickname: profileRes.userInfo.nickName,
+            avatar: profileRes.userInfo.avatarUrl
+          }
+        }
+      } catch (e) {
+        console.log('跳过获取用户信息:', e)
+      }
+      
+      // 发送到后端，后端用手机号加密数据去获取真实手机号
+      const res = await userApi.login({
+        code: loginRes.code,
+        encryptedPhoneCode: e.detail.code,
+        ...userInfoData
+      })
+      
+      uni.setStorageSync('token', res.data.token)
+      uni.setStorageSync('userInfo', res.data.userInfo)
+      
+      uni.hideLoading()
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 1500)
+    } catch (error) {
+      uni.hideLoading()
+      console.error('获取手机号登录失败:', error)
+      uni.showToast({ title: '获取手机号失败，请重试', icon: 'none' })
+    }
+  } else {
+    uni.showToast({ title: '您已拒绝获取手机号', icon: 'none' })
+  }
+  // #endif
+}
+
 const handleWechatLogin = async () => {
   if (!agreed.value) {
     return uni.showToast({ title: '请先同意用户协议', icon: 'none' })
@@ -121,7 +209,35 @@ const handleWechatLogin = async () => {
       })
     })
 
-    const res = await userApi.login({ code: loginRes.code })
+    // 获取微信用户头像和昵称
+    let userInfoData = {}
+    
+    try {
+      const profileRes = await new Promise((resolve, reject) => {
+        uni.getUserProfile({
+          desc: '用于完善用户资料',
+          success: resolve,
+          fail: (err) => {
+            console.log('获取用户信息失败，将使用默认值:', err)
+            resolve(null)
+          }
+        })
+      })
+      
+      if (profileRes && profileRes.userInfo) {
+        userInfoData = {
+          nickname: profileRes.userInfo.nickName,
+          avatar: profileRes.userInfo.avatarUrl
+        }
+      }
+    } catch (e) {
+      console.log('跳过获取用户信息:', e)
+    }
+
+    const res = await userApi.login({
+      code: loginRes.code,
+      ...userInfoData
+    })
 
     uni.setStorageSync('token', res.data.token)
     uni.setStorageSync('userInfo', res.data.userInfo)
@@ -281,6 +397,24 @@ const showAgreement = (type) => {
 }
 
 .wechat-icon {
+  margin-right: 12rpx;
+  font-size: 32rpx;
+}
+
+.phone-btn {
+  width: 100%;
+  height: 90rpx;
+  background: #1890ff;
+  color: #fff;
+  border-radius: 45rpx;
+  font-size: 30rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+}
+
+.phone-icon {
   margin-right: 12rpx;
   font-size: 32rpx;
 }

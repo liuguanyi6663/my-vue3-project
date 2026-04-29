@@ -164,9 +164,41 @@ const initDatabase = async () => {
         description TEXT,
         status ENUM('pending', 'processed', 'rejected') DEFAULT 'pending',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        handler_id INT DEFAULT NULL,
+        handle_result TEXT,
+        handled_at DATETIME DEFAULT NULL,
         FOREIGN KEY (reporter_id) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `)
+
+    // 确保 target_type 是 VARCHAR 类型（不是 ENUM）
+    try {
+      const columns = await db.query('SHOW COLUMNS FROM reports WHERE Field = "target_type"')
+      if (columns[0].Type.includes('enum')) {
+        console.log('Converting target_type from ENUM to VARCHAR...')
+        await db.query('ALTER TABLE reports MODIFY COLUMN target_type VARCHAR(20) NOT NULL')
+        console.log('Converted!')
+      }
+      
+      // 确保 handler_id, handle_result, handled_at 存在
+      const allColumns = await db.query('SHOW COLUMNS FROM reports')
+      const colNames = allColumns.map(c => c.Field)
+      
+      if (!colNames.includes('handler_id')) {
+        await db.query('ALTER TABLE reports ADD COLUMN handler_id INT DEFAULT NULL')
+        console.log('Added handler_id column!')
+      }
+      if (!colNames.includes('handle_result')) {
+        await db.query('ALTER TABLE reports ADD COLUMN handle_result TEXT')
+        console.log('Added handle_result column!')
+      }
+      if (!colNames.includes('handled_at')) {
+        await db.query('ALTER TABLE reports ADD COLUMN handled_at DATETIME DEFAULT NULL')
+        console.log('Added handled_at column!')
+      }
+    } catch (err) {
+      console.log('Table migration check complete:', err.message)
+    }
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS student_kaoyan_records (
@@ -409,6 +441,18 @@ const initDatabase = async () => {
         INDEX idx_status (status),
         FOREIGN KEY (user_id) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表'
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_blocks (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL COMMENT '执行屏蔽的用户ID',
+        blocked_user_id INT NOT NULL COMMENT '被屏蔽的用户ID',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_user_blocked (user_id, blocked_user_id),
+        INDEX idx_user (user_id),
+        INDEX idx_blocked_user (blocked_user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户屏蔽关系表'
     `)
 
     console.log('✅ 数据库表初始化完成')

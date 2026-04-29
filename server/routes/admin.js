@@ -340,6 +340,18 @@ router.get('/reports', adminAuth, async (req, res) => {
           report.target_content = material[0].title
           report.target_author = material[0].author_name
         }
+      } else if (report.target_type === 'message') {
+        const message = await db.query(
+          `SELECT m.content, u.nickname as author_name 
+           FROM messages m LEFT JOIN users u ON m.sender_id=u.id 
+           WHERE m.id=?`,
+          [report.target_id]
+        )
+        if (message.length > 0) {
+          report.target_content = message[0].content
+          report.target_author = message[0].author_name
+          report.target_sender_id = message[0].sender_id
+        }
       }
     }
     
@@ -364,7 +376,7 @@ router.get('/reports', adminAuth, async (req, res) => {
 
 router.put('/reports/:id/handle', adminAuth, async (req, res) => {
   try {
-    const { status, handle_result, action } = req.body
+    const { status, handle_result, action, ban_user, ban_duration } = req.body
     
     const report = await db.query('SELECT * FROM reports WHERE id=?', [req.params.id])
     if (report.length === 0) return res.json(error('举报记录不存在'))
@@ -374,6 +386,7 @@ router.put('/reports/:id/handle', adminAuth, async (req, res) => {
       [status, handle_result || '', req.user.id, req.params.id]
     )
     
+    // 删除内容的逻辑
     if (action === 'delete_content' && status === 'processed') {
       const r = report[0]
       if (r.target_type === 'review') {
@@ -393,6 +406,35 @@ router.put('/reports/:id/handle', adminAuth, async (req, res) => {
         await db.query('DELETE FROM material_reviews WHERE material_id=?', [r.target_id])
         await db.query('DELETE FROM download_logs WHERE material_id=?', [r.target_id])
         await db.query('DELETE FROM materials WHERE id=?', [r.target_id])
+      } else if (r.target_type === 'message') {
+        await db.query('DELETE FROM messages WHERE id=?', [r.target_id])
+      }
+    }
+    
+    // 禁言用户的逻辑
+    if (ban_user && status === 'processed') {
+      const r = report[0]
+      let targetUserId = null
+      
+      if (r.target_type === 'review') {
+        const review = await db.query('SELECT user_id FROM material_reviews WHERE id=?', [r.target_id])
+        if (review.length > 0) targetUserId = review[0].user_id
+      } else if (r.target_type === 'comment') {
+        const comment = await db.query('SELECT user_id FROM forum_comments WHERE id=?', [r.target_id])
+        if (comment.length > 0) targetUserId = comment[0].user_id
+      } else if (r.target_type === 'post') {
+        const post = await db.query('SELECT user_id FROM forum_posts WHERE id=?', [r.target_id])
+        if (post.length > 0) targetUserId = post[0].user_id
+      } else if (r.target_type === 'material') {
+        const material = await db.query('SELECT uploader_id as user_id FROM materials WHERE id=?', [r.target_id])
+        if (material.length > 0) targetUserId = material[0].user_id
+      } else if (r.target_type === 'message') {
+        const message = await db.query('SELECT sender_id as user_id FROM messages WHERE id=?', [r.target_id])
+        if (message.length > 0) targetUserId = message[0].user_id
+      }
+      
+      if (targetUserId) {
+        await db.query('UPDATE users SET is_banned=1 WHERE id=?', [targetUserId])
       }
     }
     

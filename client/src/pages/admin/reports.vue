@@ -79,9 +79,10 @@
           </view>
 
           <view class="report-actions" v-if="item.status === 'pending'">
-            <button class="btn-sm btn-success" @click="handleReport(item, 'processed', 'delete_content')">删除内容并处理</button>
-            <button class="btn-sm btn-primary" @click="handleReport(item, 'processed', 'keep')">保留内容并处理</button>
-            <button class="btn-sm btn-warning" @click="handleReport(item, 'rejected', '')">驳回举报</button>
+            <button class="btn-sm btn-danger" @click="handleReport(item, 'processed', 'delete_content', true)">删除内容+禁言</button>
+            <button class="btn-sm btn-success" @click="handleReport(item, 'processed', 'delete_content')">删除内容</button>
+            <button class="btn-sm btn-primary" @click="handleReport(item, 'processed', 'keep')">保留内容</button>
+            <button class="btn-sm btn-warning" @click="handleReport(item, 'rejected', '')">驳回</button>
           </view>
         </view>
       </view>
@@ -110,11 +111,11 @@ const totalCount = ref(0)
 
 const statusOptions = ['全部', '待处理', '已处理', '已驳回']
 const statusIndex = ref(0)
-const typeOptions = ['全部', '资料评论', '论坛评论', '论坛帖子', '资料', '广告']
+const typeOptions = ['全部', '资料评论', '论坛评论', '论坛帖子', '资料', '广告', '聊天消息']
 const typeIndex = ref(0)
 
 const statusMap = { 0: null, 1: 'pending', 2: 'processed', 3: 'rejected' }
-const typeMap = { 0: null, 1: 'review', 2: 'comment', 3: 'post', 4: 'material', 5: 'ad' }
+const typeMap = { 0: null, 1: 'review', 2: 'comment', 3: 'post', 4: 'material', 5: 'ad', 6: 'message' }
 
 const onStatusChange = (e) => {
   statusIndex.value = e.detail.value
@@ -164,15 +165,17 @@ const loadCounts = async () => {
   }
 }
 
-const handleReport = async (item, status, action) => {
+const handleReport = async (item, status, action, banUser = false) => {
   const actionLabel = action === 'delete_content' ? '删除内容' : action === 'keep' ? '保留内容' : '驳回'
+  const banLabel = banUser ? '并禁言用户' : ''
   uni.showModal({
     title: '确认操作',
-    content: `确定要${actionLabel}这条举报吗？`,
+    content: `确定要${actionLabel}这条举报${banLabel}吗？`,
+    confirmColor: banUser ? '#ff4d4f' : '#1890ff',
     success: async (modalRes) => {
       if (!modalRes.confirm) return
       try {
-        await adminApi.handleReport(item.id, { status, action, handle_result: actionLabel })
+        await adminApi.handleReport(item.id, { status, action, handle_result: actionLabel, ban_user: banUser })
         uni.showToast({ title: '处理成功', icon: 'success' })
         loadReports()
       } catch (e) {
@@ -183,7 +186,7 @@ const handleReport = async (item, status, action) => {
 }
 
 const typeLabel = (type) => {
-  const map = { review: '资料评论', comment: '论坛评论', post: '论坛帖子', material: '资料', ad: '广告' }
+  const map = { review: '资料评论', comment: '论坛评论', post: '论坛帖子', material: '资料', ad: '广告', message: '聊天消息' }
   return map[type] || type
 }
 
@@ -422,6 +425,12 @@ onMounted(() => {
   background: #f5f5f5;
   color: #999;
   border-color: #e0e0e0;
+}
+
+.btn-danger {
+  background: #cf1322;
+  color: #fff;
+  border-color: #cf1322;
 }
 
 .pagination {

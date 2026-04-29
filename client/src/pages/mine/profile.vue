@@ -22,6 +22,13 @@
             <text class="form-arrow">></text>
           </view>
         </view>
+        <view class="form-item" @click="editField('phone')">
+          <text class="form-label">手机号</text>
+          <view class="form-value-wrap">
+            <text class="form-value" :class="{ placeholder: !form.phone }">{{ form.phone || '请输入手机号' }}</text>
+            <text class="form-arrow">></text>
+          </view>
+        </view>
         <view class="form-item" @click="editField('college')">
           <text class="form-label">院校</text>
           <view class="form-value-wrap">
@@ -96,6 +103,7 @@ import { ensureAuthorize } from '@/utils/authorize'
 const form = ref({
   avatar: '',
   nickname: '',
+  phone: '',
   college: '',
   major: '',
   student_id: '',
@@ -117,6 +125,7 @@ const loadUserInfo = async () => {
       form.value = {
         avatar: res.data.avatar || '',
         nickname: res.data.nickname || '',
+        phone: res.data.phone || '',
         college: res.data.college || '',
         major: res.data.major || '',
         student_id: res.data.student_id || '',
@@ -178,6 +187,7 @@ const chooseAvatar = async () => {
 
 const fieldConfig = {
   nickname: { title: '修改昵称', placeholder: '请输入昵称' },
+  phone: { title: '修改手机号', placeholder: '请输入手机号' },
   college: { title: '修改院校', placeholder: '请输入院校名称' },
   major: { title: '修改专业', placeholder: '请输入专业名称' },
   student_id: { title: '修改学号', placeholder: '请输入学号' },
@@ -186,6 +196,35 @@ const fieldConfig = {
 }
 
 const editField = (field) => {
+  if (field === 'phone') {
+    // #ifdef MP-WEIXIN
+    uni.showModal({
+      title: '选择方式',
+      content: '您可以选择直接输入手机号，或者使用微信获取手机号',
+      confirmText: '获取微信手机号',
+      cancelText: '手动输入',
+      success: (res) => {
+        if (res.confirm) {
+          // 使用微信获取手机号
+          // 这里需要用 button 的 open-type="getPhoneNumber"，在实际项目中可以单独写一个弹窗
+          uni.showToast({ title: '请在登录时获取手机号，或直接点击手动输入', icon: 'none' })
+        } else {
+          // 手动输入
+          showManualInput(field)
+        }
+      }
+    })
+    // #endif
+    
+    // #ifndef MP-WEIXIN
+    showManualInput(field)
+    // #endif
+  } else {
+    showManualInput(field)
+  }
+}
+
+const showManualInput = (field) => {
   const config = fieldConfig[field]
   uni.showModal({
     title: config.title,
@@ -218,6 +257,7 @@ const saveProfile = async () => {
     await userApi.updateProfile({
       avatar: form.value.avatar,
       nickname: form.value.nickname,
+      phone: form.value.phone,
       college: form.value.college,
       major: form.value.major,
       student_id: form.value.student_id,

@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS `forum_favorites` (
 CREATE TABLE IF NOT EXISTS `reports` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `reporter_id` INT NOT NULL COMMENT '举报人ID',
-  `target_type` ENUM('post','comment','material','ad','review') NOT NULL COMMENT '举报对象类型',
+  `target_type` ENUM('post','comment','material','ad','review','message') NOT NULL COMMENT '举报对象类型',
   `target_id` INT NOT NULL COMMENT '举报对象ID',
   `reason` VARCHAR(200) NOT NULL COMMENT '举报原因',
   `description` TEXT COMMENT '详细描述',
@@ -502,3 +502,13 @@ CREATE TABLE IF NOT EXISTS `feedbacks` (
   INDEX `idx_user` (`user_id`),
   INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表';
+
+CREATE TABLE IF NOT EXISTS `user_blocks` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '执行屏蔽的用户ID',
+  `blocked_user_id` INT NOT NULL COMMENT '被屏蔽的用户ID',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_user_blocked` (`user_id`, `blocked_user_id`),
+  INDEX `idx_user` (`user_id`),
+  INDEX `idx_blocked_user` (`blocked_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户屏蔽关系表';

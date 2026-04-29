@@ -95,7 +95,7 @@
     {
       "path": "pages/mine/chat",
       "style": {
-        "navigationBarTitleText": "聊天"
+        "navigationStyle": "custom"
       }
     },
     {

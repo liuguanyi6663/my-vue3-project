@@ -648,6 +648,8 @@ router.post('/report', auth, async (req, res) => {
       return res.json(error('请填写完整举报信息'))
     }
     
+    console.log('Report data:', { reporter_id: req.user.id, target_type, target_id, reason, description })
+    
     await db.query(
       'INSERT INTO reports (reporter_id, target_type, target_id, reason, description) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, target_type, target_id, reason, description || '']
@@ -655,7 +657,8 @@ router.post('/report', auth, async (req, res) => {
     
     res.json(success(null, '举报成功，我们会尽快处理'))
   } catch (err) {
-    res.json(error('举报失败'))
+    console.error('Report error:', err)
+    res.json(error('举报失败: ' + err.message))
   }
 })
 
