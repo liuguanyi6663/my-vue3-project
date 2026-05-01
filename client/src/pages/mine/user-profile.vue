@@ -2,7 +2,10 @@
   <view class="page" v-if="userInfo">
     <view class="profile-header">
       <image class="profile-avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill" />
-      <text class="profile-nickname">{{ userInfo.nickname }}</text>
+      <view class="nickname-row">
+        <text class="profile-nickname">{{ userInfo.nickname }}</text>
+        <text class="landed-badge" v-if="userInfo.is_landed === 1">已上岸</text>
+      </view>
       <text class="profile-desc" v-if="userInfo.college">{{ userInfo.college }} · {{ userInfo.major }}</text>
       <text class="profile-desc" v-if="userInfo.target_school">目标：{{ userInfo.target_school }} · {{ userInfo.target_major }}</text>
       <text class="profile-desc" v-if="userInfo.exam_year">{{ userInfo.exam_year }}年考研</text>
@@ -118,6 +121,23 @@ onMounted(() => {
   font-weight: bold;
   color: #fff;
   margin-top: 20rpx;
+}
+
+.nickname-row {
+  display: flex;
+  align-items: center;
+  margin-top: 20rpx;
+}
+
+.landed-badge {
+  display: inline-block;
+  font-size: 22rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 4rpx 14rpx;
+  border-radius: 10rpx;
+  margin-left: 12rpx;
+  font-weight: bold;
 }
 
 .profile-desc {

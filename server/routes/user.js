@@ -120,7 +120,8 @@ router.post('/login', async (req, res) => {
         major: user.major,
         student_id: user.student_id,
         role: user.role,
-        is_banned: user.is_banned || 0
+        is_banned: user.is_banned || 0,
+        is_landed: user.is_landed || 0
       }
     }, '登录成功'))
   } catch (err) {
@@ -167,7 +168,7 @@ router.post('/avatar', auth, upload.single('file'), async (req, res) => {
 router.get('/public/:id', async (req, res) => {
   try {
     const users = await db.query(
-      'SELECT id, nickname, avatar, college, major, target_school, target_major, exam_year, created_at FROM users WHERE id=? AND status=1',
+      'SELECT id, nickname, avatar, college, major, target_school, target_major, exam_year, is_landed, created_at FROM users WHERE id=? AND status=1',
       [req.params.id]
     )
     if (users.length === 0) {

@@ -6,7 +6,10 @@
       <view class="user-info">
         <image class="avatar" :src="getAvatarUrl(userInfo?.avatar)" mode="aspectFill" @click="goLoginOrProfile" />
         <view class="info-content" v-if="userInfo" @click="goPage('/pages/mine/profile')">
-          <text class="nickname">{{ userInfo.nickname }}</text>
+          <view class="nickname-row">
+            <text class="nickname">{{ userInfo.nickname }}</text>
+            <text class="landed-badge" v-if="userInfo.is_landed === 1">已上岸</text>
+          </view>
           <text class="user-desc" v-if="userInfo.college">{{ userInfo.college }} · {{ userInfo.major }}</text>
           <text class="student-id" v-if="userInfo.student_id">学号：{{ userInfo.student_id }}</text>
         </view>
@@ -96,20 +99,23 @@
       </view>
 
       <view class="menu-group">
+        <text class="group-title">认证</text>
+
+        <view class="menu-item" @click="goPage('/pages/mine/title-cert')">
+          <text class="menu-icon">🏅</text>
+          <text class="menu-label">头衔认证</text>
+          <text class="landed-tag" v-if="userInfo && userInfo.is_landed === 1">已认证</text>
+          <text class="pending-tag" v-else-if="hasPendingCert">审核中</text>
+          <text class="menu-arrow">></text>
+        </view>
+      </view>
+
+      <view class="menu-group">
         <text class="group-title">设置</text>
         
         <view class="menu-item" @click="goPage('/pages/mine/profile')">
           <text class="menu-icon">👤</text>
           <text class="menu-label">个人信息</text>
-          <text class="menu-arrow">></text>
-        </view>
-        
-        <view class="menu-item" @click="goPage('/pages/push-notifications/index')">
-          <text class="menu-icon">🔔</text>
-          <text class="menu-label">消息通知</text>
-          <view class="msg-badge" v-if="pushUnreadCount > 0">
-            <text class="badge-text">{{ pushUnreadCount > 99 ? '99+' : pushUnreadCount }}</text>
-          </view>
           <text class="menu-arrow">></text>
         </view>
         
@@ -154,7 +160,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { userApi, studyApi, materialApi, messageApi, forumApi, notificationApi } from '@/api/index'
+import { userApi, studyApi, materialApi, messageApi, forumApi, titleCertApi } from '@/api/index'
 import { getAvatarUrl } from '@/utils/url'
 
 const userInfo = ref(null)
@@ -162,7 +168,7 @@ const stats = ref({})
 const favoriteCount = ref(0)
 const showSettings = ref(false)
 const unreadCount = ref(0)
-const pushUnreadCount = ref(0)
+const hasPendingCert = ref(false)
 
 const loadUserInfo = async () => {
   const token = uni.getStorageSync('token')
@@ -281,19 +287,19 @@ const loadUnreadCount = async () => {
   }
 }
 
-const loadPushUnreadCount = async () => {
+const loadCertStatus = async () => {
   const token = uni.getStorageSync('token')
   if (!token) {
-    pushUnreadCount.value = 0
+    hasPendingCert.value = false
     return
   }
   try {
-    const res = await notificationApi.getUnreadCount()
+    const res = await titleCertApi.getStatus()
     if (res.code === 200) {
-      pushUnreadCount.value = res.data.count || 0
+      hasPendingCert.value = res.data.has_pending
     }
   } catch (e) {
-    console.error('加载推送未读数失败:', e)
+    console.error('加载认证状态失败:', e)
   }
 }
 
@@ -301,7 +307,7 @@ onShow(() => {
   loadUserInfo()
   loadStats()
   loadUnreadCount()
-  loadPushUnreadCount()
+  loadCertStatus()
 })
 </script>
 
@@ -350,8 +356,25 @@ onShow(() => {
   font-size: 36rpx;
   font-weight: bold;
   color: #fff;
-  display: block;
+  display: inline;
   margin-bottom: 8rpx;
+}
+
+.nickname-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.landed-badge {
+  display: inline-block;
+  font-size: 20rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 2rpx 12rpx;
+  border-radius: 10rpx;
+  margin-left: 12rpx;
+  font-weight: bold;
 }
 
 .user-desc {
@@ -458,6 +481,24 @@ onShow(() => {
 
 .logout-text {
   color: #ff3b30 !important;
+}
+
+.landed-tag {
+  font-size: 22rpx;
+  color: #4CAF50;
+  background: #e8f5e9;
+  padding: 4rpx 14rpx;
+  border-radius: 12rpx;
+  margin-right: 12rpx;
+}
+
+.pending-tag {
+  font-size: 22rpx;
+  color: #FF9500;
+  background: #fff3e0;
+  padding: 4rpx 14rpx;
+  border-radius: 12rpx;
+  margin-right: 12rpx;
 }
 
 .menu-arrow {

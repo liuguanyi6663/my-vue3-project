@@ -28,6 +28,10 @@ let sensitiveWordCache = null
 let lastUpdateTime = 0
 const CACHE_TTL = 30 * 60 * 1000 // 30分钟
 
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const loadSensitiveWords = async () => {
   const now = Date.now()
   if (sensitiveWordCache && (now - lastUpdateTime) < CACHE_TTL) {
@@ -38,7 +42,7 @@ const loadSensitiveWords = async () => {
     const result = await db.query('SELECT word FROM sensitive_words WHERE status = 1')
     sensitiveWordCache = result.map(row => row.word)
     lastUpdateTime = now
-    console.log(`✅ 敏感词库已加载，共 ${sensitiveWordCache.length} 个词`)
+    console.log('✅ 敏感词库已加载，共', sensitiveWordCache.length, '个词')
     return sensitiveWordCache
   } catch (err) {
     console.error('❌ 加载敏感词库失败:', err.message)
@@ -56,7 +60,8 @@ const filterSensitiveWords = async (text) => {
   for (const word of words) {
     if (filtered.toLowerCase().includes(word.toLowerCase())) {
       hasSensitive = true
-      const regex = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+      const escapedWord = escapeRegExp(word)
+      const regex = new RegExp(escapedWord, 'gi')
       filtered = filtered.replace(regex, '*'.repeat(word.length))
     }
   }
@@ -84,7 +89,7 @@ const initSensitiveWords = async () => {
     if (countResult[0].cnt < 20) {
       const placeholders = defaultSensitiveWords.map(() => '(?)').join(',')
       await db.query(
-        `INSERT IGNORE INTO sensitive_words (word) VALUES ${placeholders}`,
+        'INSERT IGNORE INTO sensitive_words (word) VALUES ' + placeholders,
         defaultSensitiveWords
       )
       console.log('✅ 敏感词库已初始化')

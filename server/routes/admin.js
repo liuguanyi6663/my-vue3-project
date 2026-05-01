@@ -12,7 +12,7 @@ router.get('/users', adminAuth, async (req, res) => {
     const { keyword, role, page = 1, pageSize = 20 } = req.query
     const offset = (page - 1) * pageSize
     
-    let sql = `SELECT u.id, u.openid, u.phone, u.student_id, u.nickname, u.avatar, u.college, u.major, u.target_school, u.target_major, u.exam_year, u.role, u.status, u.is_banned, u.created_at,
+    let sql = `SELECT u.id, u.openid, u.phone, u.student_id, u.nickname, u.avatar, u.college, u.major, u.target_school, u.target_major, u.exam_year, u.role, u.status, u.is_banned, u.is_landed, u.created_at,
        kr.math_score, kr.english_score, kr.politics_score, kr.professional_score, kr.is_admitted
        FROM users u
        LEFT JOIN student_kaoyan_records kr ON kr.user_id = u.id AND kr.id = (

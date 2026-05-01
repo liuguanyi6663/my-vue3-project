@@ -13,12 +13,13 @@ const recordRoutes = require('./routes/record')
 const nationalLineRoutes = require('./routes/national-line')
 const interviewRoutes = require('./routes/interview')
 const feedbackRoutes = require('./routes/feedback')
-const notificationRoutes = require('./routes/notification')
+const scoreEstimatorRoutes = require('./routes/score-estimator')
+const titleCertificationRoutes = require('./routes/title-certification')
+const schoolWebsitesRoutes = require('./routes/school-websites')
 
 const { initSensitiveWords } = require('./utils/sensitive-words')
 const { cacheMiddleware, CACHE_TTL, invalidateCache } = require('./middleware/cache')
 const { rateLimiter, securityHeaders, sanitizeMiddleware } = require('./middleware/security')
-const timelineReminderService = require('./services/timeline-reminder-service')
 
 const app = express()
 
@@ -69,7 +70,9 @@ app.use('/api/record', recordRoutes)
 app.use('/api/national-line', nationalLineRoutes)
 app.use('/api/interview', interviewRoutes)
 app.use('/api/feedback', feedbackRoutes)
-app.use('/api/notification', notificationRoutes)
+app.use('/api/score-estimator', scoreEstimatorRoutes)
+app.use('/api/title-certification', titleCertificationRoutes)
+app.use('/api/school-websites', schoolWebsitesRoutes)
 
 app.get('/', (req, res) => {
   res.json({ code: 200, msg: '考研小程序API服务运行中', data: { timestamp: Date.now() } })
@@ -91,12 +94,6 @@ const startServer = async () => {
 
     app.listen(config.port, () => {
       console.log(`🚀 服务运行在 http://localhost:${config.port}`)
-      
-      try {
-        timelineReminderService.startScheduler(30)
-      } catch (err) {
-        console.warn('⚠️  定时任务启动失败:', err.message)
-      }
     })
   } catch (error) {
     console.error('❌ 服务启动失败:', error.message)

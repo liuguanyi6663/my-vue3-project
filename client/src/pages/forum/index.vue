@@ -43,7 +43,10 @@
           <view class="author-info">
             <image class="avatar" :src="getAvatarUrl(item.author_avatar)" mode="aspectFill" @click.stop="goUserProfile(item.user_id, item.is_anonymous)" />
             <view>
-              <text class="author-name">{{ item.display_name || item.author_name }}</text>
+              <view class="author-name-row">
+                <text class="author-name">{{ item.display_name || item.author_name }}</text>
+                <text class="landed-badge-small" v-if="item.author_is_landed === 1 && !item.is_anonymous">已上岸</text>
+              </view>
               <text class="post-time">{{ formatTime(item.created_at) }}</text>
             </view>
           </view>
@@ -413,7 +416,23 @@ onShow(() => {
   font-size: 26rpx;
   color: #333;
   font-weight: 500;
-  display: block;
+  display: inline;
+}
+
+.author-name-row {
+  display: flex;
+  align-items: center;
+}
+
+.landed-badge-small {
+  display: inline-block;
+  font-size: 18rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 1rpx 8rpx;
+  border-radius: 6rpx;
+  margin-left: 6rpx;
+  font-weight: bold;
 }
 
 .post-time {

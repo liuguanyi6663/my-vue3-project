@@ -5,7 +5,10 @@
       <view class="post-header">
         <image class="avatar" :src="getAvatarUrl(processedPost.author_avatar)" mode="aspectFill" @click="goUserProfile(processedPost.user_id, processedPost.is_anonymous)" />
         <view class="author-info">
-          <text class="author-name">{{ processedPost.display_name || processedPost.author_name }}</text>
+          <view class="author-name-row">
+            <text class="author-name">{{ processedPost.display_name || processedPost.author_name }}</text>
+            <text class="landed-badge" v-if="processedPost.author_is_landed === 1 && !processedPost.is_anonymous">已上岸</text>
+          </view>
           <text class="post-time">{{ formatTime(processedPost.created_at) }}</text>
         </view>
         <view class="post-tags">
@@ -99,7 +102,10 @@
           <view class="comment-header">
             <image class="avatar" :src="getAvatarUrl(item.avatar)" mode="aspectFill" @click="goUserProfile(item.user_id)" />
             <view class="comment-header-info">
-              <text class="commenter-name">{{ item.nickname }}</text>
+              <view class="commenter-name-row">
+                <text class="commenter-name">{{ item.nickname }}</text>
+                <text class="landed-badge-small" v-if="item.is_landed === 1">已上岸</text>
+              </view>
             </view>
           </view>
           <text class="comment-text" v-if="item.content">{{ item.content }}</text>
@@ -128,6 +134,7 @@
                 <view class="reply-header">
                   <image class="avatar-small" :src="getAvatarUrl(reply.avatar)" mode="aspectFill" @click="goUserProfile(reply.user_id)" />
                   <text class="replyer-name">{{ reply.nickname }}</text>
+                  <text class="landed-badge-tiny" v-if="reply.is_landed === 1">已上岸</text>
                   <text class="reply-to" v-if="reply.reply_to_nickname">回复 @{{ reply.reply_to_nickname }}</text>
                 </view>
                 <text class="reply-text">{{ reply.content }}</text>
@@ -589,7 +596,46 @@ onMounted(() => {
   font-size: 28rpx;
   font-weight: 500;
   color: #333;
-  display: block;
+  display: inline;
+}
+
+.author-name-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4rpx;
+}
+
+.landed-badge {
+  display: inline-block;
+  font-size: 18rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  margin-left: 8rpx;
+  font-weight: bold;
+}
+
+.landed-badge-small {
+  display: inline-block;
+  font-size: 18rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 1rpx 8rpx;
+  border-radius: 6rpx;
+  margin-left: 6rpx;
+  font-weight: bold;
+}
+
+.landed-badge-tiny {
+  display: inline-block;
+  font-size: 16rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 1rpx 6rpx;
+  border-radius: 6rpx;
+  margin-left: 6rpx;
+  font-weight: bold;
 }
 
 .post-time {
@@ -762,6 +808,11 @@ onMounted(() => {
   font-size: 26rpx;
   color: #333;
   font-weight: 500;
+}
+
+.commenter-name-row {
+  display: flex;
+  align-items: center;
 }
 
 .comment-text {

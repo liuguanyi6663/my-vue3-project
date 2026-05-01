@@ -26,7 +26,11 @@ export const studyApi = {
   updatePlan: (id, data) => put(`/study/plans/${id}`, data),
   deletePlan: (id) => del(`/study/plans/${id}`),
   checkin: (data) => post('/study/checkin', data),
+  deleteCheckin: (date) => del('/study/checkin', { date }),
+  updateMood: (data) => put('/study/checkin/mood', data),
   getCheckins: (year, month) => get('/study/checkins', { year, month }),
+  getHeatmap: () => get('/study/heatmap'),
+  getMoodTrend: () => get('/study/mood-trend'),
   getTemplates: () => get('/study/templates'),
   applyTemplate: (data) => post('/study/apply-template', data)
 }
@@ -200,7 +204,9 @@ export const nationalLineApi = {
   update: (id, data) => put(`/national-line/admin/update/${id}`, data),
   delete: (id) => del(`/national-line/admin/delete/${id}`),
   batchSave: (data) => post('/national-line/admin/batch', data),
-  batchDeleteByYear: (year, params) => del(`/national-line/admin/batch-by-year/${year}`, params)
+  batchDeleteByYear: (year, params) => del(`/national-line/admin/batch-by-year/${year}`, params),
+  crawl: (data) => post('/national-line/admin/crawl', data),
+  getCrawlUrls: () => get('/national-line/admin/crawl-urls')
 }
 
 export const interviewApi = {
@@ -275,10 +281,51 @@ export const feedbackApi = {
   delete: (id) => del(`/feedback/${id}`)
 }
 
-export const notificationApi = {
-  getList: (params) => get('/notification/list', params),
-  getUnreadCount: () => get('/notification/unread-count'),
-  markRead: (id) => post(`/notification/mark-read/${id}`),
-  markAllRead: () => post('/notification/mark-all-read'),
-  delete: (id) => del(`/notification/${id}`)
+export const scoreEstimatorApi = {
+  getOptions: () => get('/score-estimator/options'),
+  estimate: (data) => post('/score-estimator/estimate', data)
+}
+
+export const titleCertApi = {
+  apply: (filePath, formData) => {
+    const token = uni.getStorageSync('token')
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url: 'http://127.0.0.1:3000/api/title-certification/apply',
+        filePath: filePath,
+        name: 'screenshot',
+        header: { 'Authorization': `Bearer ${token}` },
+        formData: formData || {},
+        success: (res) => {
+          const data = JSON.parse(res.data)
+          if (data.code === 200) {
+            resolve(data)
+          } else {
+            uni.showToast({ title: data.msg || '提交失败', icon: 'none' })
+            reject(data)
+          }
+        },
+        fail: (err) => {
+          uni.showToast({ title: '提交失败，请检查网络', icon: 'none' })
+          reject(err)
+        }
+      })
+    })
+  },
+  getMyRecords: () => get('/title-certification/my'),
+  getStatus: () => get('/title-certification/status'),
+  getAdminList: (params) => get('/title-certification/list', params),
+  getAdminStats: () => get('/title-certification/stats'),
+  audit: (id, data) => put(`/title-certification/audit/${id}`, data),
+  revoke: (userId) => put(`/title-certification/revoke/${userId}`)
+}
+
+export const schoolWebsitesApi = {
+  getList: (params) => get('/school-websites', params),
+  getRegions: () => get('/school-websites/regions'),
+  trackClick: (id) => post(`/school-websites/${id}/click`),
+  getAdminList: (params) => get('/school-websites/admin/list', params),
+  create: (data) => post('/school-websites/admin/create', data),
+  update: (id, data) => put(`/school-websites/admin/${id}`, data),
+  delete: (id) => del(`/school-websites/admin/${id}`)
 }

@@ -14,7 +14,7 @@ router.get('/posts', optionalAuth, async (req, res) => {
     
     console.log('获取帖子列表请求，参数:', { category, keyword, page, pageSize, sort })
     
-    let sql = `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
+    let sql = `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar, u.is_landed as author_is_landed,
                CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
                FROM forum_posts p 
                LEFT JOIN users u ON p.user_id=u.id 
@@ -86,7 +86,7 @@ router.get('/posts', optionalAuth, async (req, res) => {
 router.get('/posts/:id', optionalAuth, async (req, res) => {
   try {
     const posts = await db.query(
-      `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar,
+      `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar, u.is_landed as author_is_landed,
        CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
        FROM forum_posts p 
        LEFT JOIN users u ON p.user_id=u.id 
@@ -110,7 +110,7 @@ router.get('/posts/:id', optionalAuth, async (req, res) => {
     }
 
     const comments = await db.query(
-      `SELECT c.*, u.nickname, u.avatar,
+      `SELECT c.*, u.nickname, u.avatar, u.is_landed,
        CASE WHEN c.user_id=? THEN 1 ELSE 0 END as is_owner
        FROM forum_comments c 
        LEFT JOIN users u ON c.user_id=u.id 
@@ -135,7 +135,7 @@ router.get('/posts/:id', optionalAuth, async (req, res) => {
         comment.reply_count = replyCount[0].cnt
 
         const replies = await db.query(
-          `SELECT c.*, u.nickname, u.avatar,
+          `SELECT c.*, u.nickname, u.avatar, u.is_landed,
            ru.nickname as reply_to_nickname
            FROM forum_comments c
            LEFT JOIN users u ON c.user_id=u.id
@@ -163,7 +163,7 @@ router.get('/posts/:id', optionalAuth, async (req, res) => {
         comment.reply_count = replyCount[0].cnt
 
         const replies = await db.query(
-          `SELECT c.*, u.nickname, u.avatar,
+          `SELECT c.*, u.nickname, u.avatar, u.is_landed,
            ru.nickname as reply_to_nickname
            FROM forum_comments c
            LEFT JOIN users u ON c.user_id=u.id

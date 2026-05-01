@@ -51,9 +51,21 @@
           <text class="menu-arrow">></text>
         </view>
 
+        <view class="menu-item" @click="goPage('/pages/admin/title-audit')">
+          <text class="menu-icon">🏅</text>
+          <text class="menu-label">上岸头衔审批</text>
+          <text class="menu-arrow">></text>
+        </view>
+
         <view class="menu-item" @click="goPage('/pages/admin/feedback')">
           <text class="menu-icon">💭</text>
           <text class="menu-label">意见反应栏</text>
+          <text class="menu-arrow">></text>
+        </view>
+
+        <view class="menu-item" @click="goPage('/pages/admin/school-websites')">
+          <text class="menu-icon">🏫</text>
+          <text class="menu-label">学校官网管理</text>
           <text class="menu-arrow">></text>
         </view>
       </view>

@@ -52,6 +52,7 @@
             <view class="user-basic">
               <view class="user-name-row">
                 <text class="user-nickname">{{ item.nickname || '未设置' }}</text>
+                <text class="landed-tag" v-if="item.is_landed === 1">已上岸</text>
                 <text class="role-tag" :class="item.role">{{ item.role === 'super_admin' ? '超级管理员' : item.role === 'admin' ? '管理员' : '学生' }}</text>
                 <text class="status-tag" :class="{ banned: item.is_banned === 1, disabled: item.status === 0 }">
                   {{ item.status === 0 ? '已禁用' : item.is_banned === 1 ? '已禁言' : '正常' }}
@@ -613,6 +614,15 @@ onMounted(() => {
   border-radius: 6rpx;
   font-size: 20rpx;
   color: #fff;
+}
+
+.landed-tag {
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  font-weight: bold;
 }
 
 .role-tag.admin {

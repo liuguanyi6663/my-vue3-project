@@ -9,7 +9,10 @@
       <view class="daily-quote">
         <text class="quote-text">{{ dailyQuote }}</text>
       </view>
-      <text class="checkin-btn" @click="goCheckin">打卡</text>
+      <view class="status-actions">
+        <text class="daily-card-btn" @click="goDailyCard">日签</text>
+        <text class="checkin-btn" @click="goCheckin">打卡</text>
+      </view>
     </view>
 
     <!-- 大屏轮播 -->
@@ -58,6 +61,14 @@
           <view class="entry-item" @click="navigateTo('/pages/national-line/index')">
             <text class="entry-icon">📈</text>
             <text class="entry-label">国家线</text>
+          </view>
+          <view class="entry-item" @click="navigateTo('/pages/tools/score-estimator')">
+            <text class="entry-icon new">🧮</text>
+            <text class="entry-label">成绩估算</text>
+          </view>
+          <view class="entry-item" @click="navigateTo('/pages/tools/school-websites')">
+            <text class="entry-icon new">🏫</text>
+            <text class="entry-label">学校官网</text>
           </view>
         </view>
       </scroll-view>
@@ -252,6 +263,10 @@ const switchToTab = (path) => {
 
 const goCheckin = () => {
   uni.navigateTo({ url: '/pages/mine/checkin' })
+}
+
+const goDailyCard = () => {
+  uni.navigateTo({ url: '/pages/tools/daily-card' })
 }
 
 const goToTreehole = () => {
@@ -502,6 +517,20 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
 }
 
+.status-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.daily-card-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  padding: 12rpx 24rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
 .checkin-btn {
   background: linear-gradient(135deg, #c53030, #9b2c2c);
   color: #fff;
@@ -509,7 +538,6 @@ onUnmounted(() => {
   border-radius: 20rpx;
   font-size: 24rpx;
   font-weight: bold;
-  margin-left: 20rpx;
 }
 
 

@@ -2,13 +2,71 @@
   <view class="admin-page">
     <view class="admin-header">
       <text class="admin-title">国家线数据管理</text>
-      <text class="admin-desc">管理历年考研国家线数据</text>
+      <text class="admin-desc">从学信网爬取历年考研国家线数据</text>
     </view>
 
     <view class="content-section">
-      <view class="add-section card">
-        <text class="section-title">添加国家线数据</text>
+      <view class="crawl-section card">
+        <text class="section-title">🕷️ 一键爬取国家线</text>
+        <text class="section-desc">从中国研究生招生信息网(yz.chsi.com.cn)自动爬取国家线数据</text>
 
+        <view class="crawl-year-list">
+          <view
+            v-for="y in crawlYears"
+            :key="y.year"
+            class="crawl-year-item"
+            :class="{ active: crawlYear === y.year, done: crawledYears.has(y.year) }"
+            @click="selectCrawlYear(y.year)"
+          >
+            <text class="crawl-year-text">{{ y.year }}</text>
+            <text v-if="crawledYears.has(y.year)" class="crawl-year-badge">✓</text>
+          </view>
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">爬取年份</text>
+          <input class="form-input" v-model="crawlYear" type="number" placeholder="输入年份，如 2026" />
+        </view>
+
+        <view class="form-group">
+          <text class="form-label">学信网URL（可选）</text>
+          <input class="form-input" v-model="crawlUrl" placeholder="留空则使用预设URL" />
+          <text class="form-hint">预设URL覆盖近5年，其他年份需手动输入学信网国家线页面地址</text>
+        </view>
+
+        <button class="crawl-btn" @click="handleCrawl" :disabled="crawling">
+          <text class="crawl-btn-text">{{ crawling ? '🕷️ 爬取中...' : '🕷️ 开始爬取' }}</text>
+        </button>
+
+        <view v-if="crawlResult" class="crawl-result">
+          <view class="result-header">
+            <text class="result-icon">✅</text>
+            <text class="result-title">爬取完成</text>
+          </view>
+          <view class="result-stats">
+            <view class="result-stat">
+              <text class="stat-num">{{ crawlResult.total }}</text>
+              <text class="stat-label">解析条数</text>
+            </view>
+            <view class="result-stat">
+              <text class="stat-num green">{{ crawlResult.inserted }}</text>
+              <text class="stat-label">新增</text>
+            </view>
+            <view class="result-stat">
+              <text class="stat-num orange">{{ crawlResult.updated }}</text>
+              <text class="stat-label">更新</text>
+            </view>
+          </view>
+          <text class="result-url">来源：{{ crawlResult.url }}</text>
+        </view>
+
+        <view v-if="crawlError" class="crawl-error">
+          <text class="error-text">❌ {{ crawlError }}</text>
+        </view>
+      </view>
+
+      <view class="manual-section card">
+        <text class="section-title">手动添加</text>
         <view class="form-row">
           <view class="form-group half">
             <text class="form-label">年份</text>
@@ -26,129 +84,50 @@
             </view>
           </view>
         </view>
-
-        <view class="form-group">
-          <text class="form-label">类别</text>
-          <view class="type-selector">
-            <view class="type-option" :class="{ active: form.category === 'academic' }" @click="form.category = 'academic'">
-              <text>学术型</text>
-            </view>
-            <view class="type-option" :class="{ active: form.category === 'professional' }" @click="form.category = 'professional'">
-              <text>专业型</text>
+        <view class="form-row">
+          <view class="form-group half">
+            <text class="form-label">类别</text>
+            <view class="type-selector">
+              <view class="type-option" :class="{ active: form.category === 'academic' }" @click="form.category = 'academic'">
+                <text>学术型</text>
+              </view>
+              <view class="type-option" :class="{ active: form.category === 'professional' }" @click="form.category = 'professional'">
+                <text>专业型</text>
+              </view>
             </view>
           </view>
+          <view class="form-group half">
+            <text class="form-label">学科门类</text>
+            <input class="form-input" v-model="form.subject_type" placeholder="如：哲学" />
+          </view>
         </view>
-
-        <view class="form-group">
-          <text class="form-label">学科门类</text>
-          <input class="form-input" v-model="form.subject_type" placeholder="如：哲学、经济学、法学" />
-        </view>
-
         <view class="form-row">
           <view class="form-group third">
             <text class="form-label">总分</text>
-            <input class="form-input" v-model="form.total_score" type="number" placeholder="总分线" />
+            <input class="form-input" v-model="form.total_score" type="number" placeholder="总分" />
           </view>
           <view class="form-group third">
             <text class="form-label">政治</text>
-            <input class="form-input" v-model="form.politics_score" type="number" placeholder="政治线" />
+            <input class="form-input" v-model="form.politics_score" type="number" placeholder="政治" />
           </view>
           <view class="form-group third">
             <text class="form-label">外语</text>
-            <input class="form-input" v-model="form.foreign_score" type="number" placeholder="外语线" />
+            <input class="form-input" v-model="form.foreign_score" type="number" placeholder="外语" />
           </view>
         </view>
-
         <view class="form-row">
           <view class="form-group half">
             <text class="form-label">业务课一</text>
-            <input class="form-input" v-model="form.subject1_score" type="number" placeholder="业务课一线" />
+            <input class="form-input" v-model="form.subject1_score" type="number" placeholder="课一" />
           </view>
           <view class="form-group half">
             <text class="form-label">业务课二</text>
-            <input class="form-input" v-model="form.subject2_score" type="number" placeholder="业务课二线" />
+            <input class="form-input" v-model="form.subject2_score" type="number" placeholder="课二" />
           </view>
         </view>
-
         <button class="submit-btn" @click="handleAdd" :disabled="submitting">
-          {{ submitting ? '添加中...' : '添加数据' }}
+          {{ submitting ? '添加中...' : '手动添加' }}
         </button>
-      </view>
-
-      <view class="batch-section card">
-        <text class="section-title">批量添加（同年份、区域、类别）</text>
-        <view class="form-row">
-          <view class="form-group third">
-            <text class="form-label">年份</text>
-            <input class="form-input" v-model="batchForm.year" type="number" placeholder="年份" />
-          </view>
-          <view class="form-group third">
-            <text class="form-label">区域</text>
-            <view class="type-selector small">
-              <view class="type-option" :class="{ active: batchForm.region === 'A' }" @click="batchForm.region = 'A'">
-                <text>A区</text>
-              </view>
-              <view class="type-option" :class="{ active: batchForm.region === 'B' }" @click="batchForm.region = 'B'">
-                <text>B区</text>
-              </view>
-            </view>
-          </view>
-          <view class="form-group third">
-            <text class="form-label">类别</text>
-            <view class="type-selector small">
-              <view class="type-option" :class="{ active: batchForm.category === 'academic' }" @click="batchForm.category = 'academic'">
-                <text>学术</text>
-              </view>
-              <view class="type-option" :class="{ active: batchForm.category === 'professional' }" @click="batchForm.category = 'professional'">
-                <text>专业</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <view v-for="(item, index) in batchItems" :key="index" class="batch-item">
-          <view class="batch-item-header">
-            <text class="batch-item-index">第{{ index + 1 }}条</text>
-            <text class="batch-remove" @click="removeBatchItem(index)">删除</text>
-          </view>
-          <view class="form-row">
-            <view class="form-group half">
-              <text class="form-label">学科门类</text>
-              <input class="form-input" v-model="item.subject_type" placeholder="学科门类" />
-            </view>
-            <view class="form-group half">
-              <text class="form-label">总分</text>
-              <input class="form-input" v-model="item.total_score" type="number" placeholder="总分" />
-            </view>
-          </view>
-          <view class="form-row">
-            <view class="form-group third">
-              <text class="form-label">政治</text>
-              <input class="form-input" v-model="item.politics_score" type="number" placeholder="政治" />
-            </view>
-            <view class="form-group third">
-              <text class="form-label">外语</text>
-              <input class="form-input" v-model="item.foreign_score" type="number" placeholder="外语" />
-            </view>
-            <view class="form-group third">
-              <text class="form-label">业务课一</text>
-              <input class="form-input" v-model="item.subject1_score" type="number" placeholder="课一" />
-            </view>
-          </view>
-          <view class="form-row">
-            <view class="form-group half">
-              <text class="form-label">业务课二</text>
-              <input class="form-input" v-model="item.subject2_score" type="number" placeholder="业务课二" />
-            </view>
-          </view>
-        </view>
-
-        <view class="batch-actions">
-          <text class="add-item-btn" @click="addBatchItem">+ 添加一条</text>
-          <button class="submit-btn batch-submit" @click="handleBatchSave" :disabled="submitting">
-            {{ submitting ? '保存中...' : '批量保存' }}
-          </button>
-        </view>
       </view>
 
       <view class="list-section card">
@@ -169,7 +148,7 @@
           <text>加载中...</text>
         </view>
         <view v-else-if="dataList.length === 0" class="empty-state">
-          <text class="empty-text">暂无数据</text>
+          <text class="empty-text">暂无数据，点击上方爬取按钮获取</text>
         </view>
         <view v-else class="data-list">
           <view v-for="item in dataList" :key="item.id" class="data-card">
@@ -222,7 +201,6 @@
       <view class="modal-mask" @click="showEditModal = false"></view>
       <view class="modal-content">
         <text class="modal-title">编辑国家线数据</text>
-
         <view class="form-row">
           <view class="form-group half">
             <text class="form-label">年份</text>
@@ -240,7 +218,6 @@
             </view>
           </view>
         </view>
-
         <view class="form-group">
           <text class="form-label">类别</text>
           <view class="type-selector">
@@ -252,12 +229,10 @@
             </view>
           </view>
         </view>
-
         <view class="form-group">
           <text class="form-label">学科门类</text>
           <input class="form-input" v-model="editForm.subject_type" />
         </view>
-
         <view class="form-row">
           <view class="form-group third">
             <text class="form-label">总分</text>
@@ -272,7 +247,6 @@
             <input class="form-input" v-model="editForm.foreign_score" type="number" />
           </view>
         </view>
-
         <view class="form-row">
           <view class="form-group half">
             <text class="form-label">业务课一</text>
@@ -283,7 +257,6 @@
             <input class="form-input" v-model="editForm.subject2_score" type="number" />
           </view>
         </view>
-
         <view class="modal-actions">
           <button class="modal-btn cancel" @click="showEditModal = false">取消</button>
           <button class="modal-btn confirm" @click="handleUpdate" :disabled="submitting">保存</button>
@@ -296,8 +269,60 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { nationalLineApi } from '@/api/index.js'
+import { getCurrentYear } from '@/utils/date.js'
+
+const crawlYear = ref(new Date().getFullYear())
+const crawlUrl = ref('')
+const crawling = ref(false)
+const crawlResult = ref(null)
+const crawlError = ref('')
+const crawledYears = ref(new Set())
+
+const crawlYears = computed(() => {
+  const current = getCurrentYear()
+  const years = []
+  for (let i = 0; i < 5; i++) {
+    years.push({ year: current - i })
+  }
+  return years
+})
+
+const selectCrawlYear = (year) => {
+  crawlYear.value = year
+  crawlUrl.value = ''
+}
+
+const handleCrawl = async () => {
+  if (!crawlYear.value) {
+    uni.showToast({ title: '请输入年份', icon: 'none' })
+    return
+  }
+
+  crawling.value = true
+  crawlResult.value = null
+  crawlError.value = ''
+
+  try {
+    const data = { year: crawlYear.value }
+    if (crawlUrl.value.trim()) data.url = crawlUrl.value.trim()
+
+    const res = await nationalLineApi.crawl(data)
+    if (res.code === 200 && res.data) {
+      crawlResult.value = res.data
+      crawledYears.value.add(crawlYear.value)
+      loadList()
+      uni.showToast({ title: res.msg || '爬取成功', icon: 'success' })
+    } else {
+      crawlError.value = res.msg || '爬取失败'
+    }
+  } catch (e) {
+    crawlError.value = e.msg || '网络异常，请稍后重试'
+  } finally {
+    crawling.value = false
+  }
+}
 
 const form = ref({
   year: new Date().getFullYear(),
@@ -310,16 +335,6 @@ const form = ref({
   subject1_score: '',
   subject2_score: ''
 })
-
-const batchForm = ref({
-  year: new Date().getFullYear(),
-  region: 'A',
-  category: 'academic'
-})
-
-const batchItems = ref([
-  { subject_type: '', total_score: '', politics_score: '', foreign_score: '', subject1_score: '', subject2_score: '' }
-])
 
 const editForm = ref({})
 const showEditModal = ref(false)
@@ -395,55 +410,6 @@ const handleAdd = async () => {
     }
   } catch (e) {
     uni.showToast({ title: '添加失败', icon: 'none' })
-  } finally {
-    submitting.value = false
-  }
-}
-
-const addBatchItem = () => {
-  batchItems.value.push({ subject_type: '', total_score: '', politics_score: '', foreign_score: '', subject1_score: '', subject2_score: '' })
-}
-
-const removeBatchItem = (index) => {
-  if (batchItems.value.length > 1) {
-    batchItems.value.splice(index, 1)
-  }
-}
-
-const handleBatchSave = async () => {
-  if (!batchForm.value.year) {
-    uni.showToast({ title: '请填写年份', icon: 'none' })
-    return
-  }
-
-  const validItems = batchItems.value.filter(item => item.subject_type && item.total_score)
-  if (validItems.length === 0) {
-    uni.showToast({ title: '请至少添加一条有效数据', icon: 'none' })
-    return
-  }
-
-  submitting.value = true
-  try {
-    const res = await nationalLineApi.batchSave({
-      ...batchForm.value,
-      items: validItems.map(item => ({
-        ...item,
-        total_score: parseInt(item.total_score),
-        politics_score: item.politics_score ? parseInt(item.politics_score) : null,
-        foreign_score: item.foreign_score ? parseInt(item.foreign_score) : null,
-        subject1_score: item.subject1_score ? parseInt(item.subject1_score) : null,
-        subject2_score: item.subject2_score ? parseInt(item.subject2_score) : null
-      }))
-    })
-    if (res.code === 200) {
-      uni.showToast({ title: '批量保存成功', icon: 'success' })
-      batchItems.value = [{ subject_type: '', total_score: '', politics_score: '', foreign_score: '', subject1_score: '', subject2_score: '' }]
-      loadList()
-    } else {
-      uni.showToast({ title: res.msg || '保存失败', icon: 'none' })
-    }
-  } catch (e) {
-    uni.showToast({ title: '保存失败', icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -544,20 +510,62 @@ onMounted(() => {
   font-size: 32rpx;
   font-weight: bold;
   color: #333;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.section-desc {
+  font-size: 24rpx;
+  color: #999;
   margin-bottom: 24rpx;
   display: block;
 }
 
-.section-header {
+.crawl-year-list {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 16rpx;
   margin-bottom: 24rpx;
+  flex-wrap: wrap;
 }
 
-.section-count {
-  font-size: 24rpx;
-  color: #999;
+.crawl-year-item {
+  padding: 12rpx 32rpx;
+  border-radius: 30rpx;
+  border: 2rpx solid #e0e0e0;
+  position: relative;
+}
+
+.crawl-year-item.active {
+  background: #4CAF50;
+  border-color: #4CAF50;
+}
+
+.crawl-year-item.done {
+  border-color: #4CAF50;
+}
+
+.crawl-year-text {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.crawl-year-item.active .crawl-year-text {
+  color: #fff;
+  font-weight: bold;
+}
+
+.crawl-year-badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 18rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 28rpx;
 }
 
 .form-group {
@@ -577,6 +585,13 @@ onMounted(() => {
   color: #333;
   font-weight: bold;
   margin-bottom: 8rpx;
+  display: block;
+}
+
+.form-hint {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 6rpx;
   display: block;
 }
 
@@ -600,11 +615,6 @@ onMounted(() => {
   gap: 12rpx;
 }
 
-.type-selector.small .type-option {
-  padding: 8rpx 16rpx;
-  font-size: 24rpx;
-}
-
 .type-option {
   padding: 12rpx 24rpx;
   border-radius: 8rpx;
@@ -617,6 +627,100 @@ onMounted(() => {
   background: #4CAF50;
   color: #fff;
   border-color: #4CAF50;
+}
+
+.crawl-btn {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  margin-top: 16rpx;
+}
+
+.crawl-btn[disabled] {
+  opacity: 0.6;
+}
+
+.crawl-result {
+  margin-top: 24rpx;
+  background: #f0f9f0;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  border: 1rpx solid #c8e6c9;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.result-icon {
+  font-size: 32rpx;
+}
+
+.result-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.result-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16rpx;
+}
+
+.result-stat {
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+}
+
+.stat-num.green {
+  color: #4CAF50;
+}
+
+.stat-num.orange {
+  color: #ff9800;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.result-url {
+  font-size: 20rpx;
+  color: #999;
+  word-break: break-all;
+}
+
+.crawl-error {
+  margin-top: 16rpx;
+  background: #fff3f3;
+  border-radius: 12rpx;
+  padding: 16rpx 24rpx;
+  border: 1rpx solid #ffcdd2;
+}
+
+.error-text {
+  font-size: 24rpx;
+  color: #c62828;
+}
+
+.manual-section {
+  border-top: 4rpx solid #ff9800;
 }
 
 .submit-btn {
@@ -635,56 +739,16 @@ onMounted(() => {
   opacity: 0.6;
 }
 
-.batch-section {
-  border-top: 4rpx solid #4CAF50;
-}
-
-.batch-item {
-  background: #f9f9f9;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-bottom: 16rpx;
-}
-
-.batch-item-header {
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16rpx;
+  margin-bottom: 24rpx;
 }
 
-.batch-item-index {
-  font-size: 26rpx;
-  font-weight: bold;
-  color: #4CAF50;
-}
-
-.batch-remove {
+.section-count {
   font-size: 24rpx;
-  color: #ff4d4f;
-  padding: 4rpx 12rpx;
-  border: 1rpx solid #ff4d4f;
-  border-radius: 6rpx;
-}
-
-.batch-actions {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-top: 16rpx;
-}
-
-.add-item-btn {
-  font-size: 26rpx;
-  color: #4CAF50;
-  padding: 16rpx 24rpx;
-  border: 1rpx dashed #4CAF50;
-  border-radius: 10rpx;
-  flex-shrink: 0;
-}
-
-.batch-submit {
-  flex: 1;
+  color: #999;
 }
 
 .filter-row {
