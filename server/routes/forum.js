@@ -641,6 +641,78 @@ router.get('/my-posts', auth, async (req, res) => {
   }
 })
 
+router.get('/user-posts/:userId', optionalAuth, async (req, res) => {
+  try {
+    console.log('获取用户帖子，用户ID:', req.params.userId, '查询参数:', req.query)
+    const { userId } = req.params
+    const page = parseInt(req.query.page) || 1
+    const pageSize = parseInt(req.query.pageSize) || 10
+    const offset = (page - 1) * pageSize
+
+    // 只获取非匿名且状态正常的帖子
+    const countSql = `SELECT COUNT(*) as total FROM forum_posts 
+                      WHERE user_id=? AND status=1 AND is_anonymous=0`
+    const listSql = `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar, u.is_landed as author_is_landed
+                    FROM forum_posts p 
+                    LEFT JOIN users u ON p.user_id=u.id 
+                    WHERE p.user_id=? AND p.status=1 AND p.is_anonymous=0
+                    ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
+
+    console.log('执行查询SQL:', listSql)
+    const list = await db.query(listSql, [userId, pageSize, offset])
+    const totalResult = await db.query(countSql, [userId])
+    console.log('查询到帖子数量:', list.length, '总数:', totalResult[0].total)
+
+    // 解析图片和标签
+    for (const post of list) {
+      let parsedImages = []
+      try {
+        if (post.images) {
+          parsedImages = typeof post.images === 'string' ? JSON.parse(post.images) : post.images
+        }
+      } catch (e) {
+        console.warn('解析图片失败:', e)
+      }
+      post.images = parsedImages
+
+      let parsedTags = []
+      try {
+        if (post.tags) {
+          parsedTags = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags
+        }
+      } catch (e) {
+        console.warn('解析标签失败:', e)
+      }
+      post.tags = parsedTags
+
+      // 添加点赞和收藏状态
+      if (req.user) {
+        const liked = await db.query(
+          'SELECT * FROM forum_likes WHERE user_id=? AND target_id=? AND target_type="post"',
+          [req.user.id, post.id]
+        )
+        post.isLiked = liked.length > 0
+
+        const favorited = await db.query(
+          'SELECT * FROM forum_favorites WHERE user_id=? AND post_id=?',
+          [req.user.id, post.id]
+        )
+        post.isFavorited = favorited.length > 0
+      } else {
+        post.isLiked = false
+        post.isFavorited = false
+      }
+    }
+
+    const result = pageSuccess(list, totalResult[0].total, page, pageSize)
+    console.log('返回结果:', JSON.stringify(result).substring(0, 500) + '...')
+    res.json(result)
+  } catch (err) {
+    console.error('获取用户帖子错误:', err)
+    res.json(error('获取用户帖子失败'))
+  }
+})
+
 router.post('/report', auth, async (req, res) => {
   try {
     const { target_type, target_id, reason, description } = req.body

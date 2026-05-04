@@ -533,10 +533,12 @@ const getCategoryName = (cat) => {
 
 const goUserProfile = (userId, isAnonymous) => {
   if (!userId || isAnonymous) return
-  const currentUserId = uni.getStorageSync('userInfo')
+  let currentUserInfo = uni.getStorageSync('userInfo')
   try {
-    const parsed = JSON.parse(currentUserId)
-    if (parsed && parsed.id === userId) {
+    if (typeof currentUserInfo === 'string') {
+      currentUserInfo = JSON.parse(currentUserInfo)
+    }
+    if (currentUserInfo && currentUserInfo.id === userId) {
       uni.navigateTo({ url: '/pages/mine/profile' })
       return
     }

@@ -3,6 +3,7 @@ const router = express.Router()
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth } = require('../middleware/auth')
+const wechat = require('../utils/wechat')
 
 // 检查是否被对方屏蔽的辅助函数
 const checkBlocked = async (currentUserId, targetUserId) => {
@@ -109,7 +110,7 @@ router.post('/send', auth, async (req, res) => {
 
     const lastMsg = await db.query(
       `SELECT * FROM messages 
-       WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)
+       WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?) 
        ORDER BY created_at DESC LIMIT 1`,
       [req.user.id, receiver_id, receiver_id, req.user.id]
     )
@@ -128,6 +129,10 @@ router.post('/send', auth, async (req, res) => {
       'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
       [req.user.id, receiver_id, content.trim()]
     )
+
+    // 发送微信订阅消息提醒
+    wechat.sendMessageNotification(req.user.nickname || '用户', receiver_id, content.trim())
+      .catch(err => console.error('发送消息通知失败:', err))
 
     res.json(success({ id: result.insertId }, '发送成功'))
   } catch (err) {
@@ -210,6 +215,68 @@ router.get('/check-block/:userId', auth, async (req, res) => {
   } catch (err) {
     console.error(err)
     res.json(error('检查失败'))
+  }
+})
+
+router.post('/subscribe', auth, async (req, res) => {
+  try {
+    const { template_id, scene = 'default' } = req.body
+    if (!template_id) {
+      return res.json(error('请提供模板ID'))
+    }
+    if (!req.user.openid) {
+      return res.json(error('用户未绑定微信'))
+    }
+
+    const success = await wechat.addUserSubscription(
+      req.user.id,
+      req.user.openid,
+      template_id,
+      scene
+    )
+    if (success) {
+      res.json(success(null, '订阅成功'))
+    } else {
+      res.json(error('订阅失败'))
+    }
+  } catch (err) {
+    console.error(err)
+    res.json(error('订阅失败'))
+  }
+})
+
+router.get('/subscriptions', auth, async (req, res) => {
+  try {
+    const subscriptions = await wechat.getUserSubscriptions(req.user.id)
+    res.json(success(subscriptions))
+  } catch (err) {
+    console.error(err)
+    res.json(error('获取订阅失败'))
+  }
+})
+
+router.delete('/subscribe/:template_id', auth, async (req, res) => {
+  try {
+    const templateId = req.params.template_id
+    if (!templateId) {
+      return res.json(error('请提供模板ID'))
+    }
+    if (!req.user.openid) {
+      return res.json(error('用户未绑定微信'))
+    }
+
+    const success = await wechat.removeUserSubscription(
+      req.user.openid,
+      templateId
+    )
+    if (success) {
+      res.json(success(null, '取消订阅成功'))
+    } else {
+      res.json(error('取消订阅失败'))
+    }
+  } catch (err) {
+    console.error(err)
+    res.json(error('取消订阅失败'))
   }
 })
 

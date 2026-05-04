@@ -85,12 +85,6 @@
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/mine/my-kaoyan')">
-          <text class="menu-icon">📝</text>
-          <text class="menu-label">我的考研信息</text>
-          <text class="menu-arrow">></text>
-        </view>
-
         <view class="menu-item" @click="goPage('/pages/tools/interview')">
           <text class="menu-icon">🎤</text>
           <text class="menu-label">复试工具箱</text>
@@ -113,12 +107,6 @@
       <view class="menu-group">
         <text class="group-title">设置</text>
         
-        <view class="menu-item" @click="goPage('/pages/mine/profile')">
-          <text class="menu-icon">👤</text>
-          <text class="menu-label">个人信息</text>
-          <text class="menu-arrow">></text>
-        </view>
-        
         <view class="menu-item" @click="goPage('/pages/mine/messages')">
           <text class="menu-icon">💬</text>
           <text class="menu-label">我的消息</text>
@@ -128,16 +116,49 @@
           <text class="menu-arrow">></text>
         </view>
         
-        <view class="menu-item" @click="goFeedback">
-          <text class="menu-icon">💭</text>
-          <text class="menu-label">意见反馈</text>
-          <text class="menu-arrow">></text>
-        </view>
-        
         <view class="menu-item" v-if="userInfo && (userInfo.role === 'admin' || userInfo.role === 'super_admin')" @click="goPage('/pages/admin/index')">
           <text class="menu-icon">🛠️</text>
           <text class="menu-label" style="color: #4CAF50;">管理后台</text>
           <text class="menu-arrow">></text>
+        </view>
+        
+        <view class="menu-item" @click="toggleSettingsMenu">
+          <text class="menu-icon settings-icon">⚙️</text>
+          <text class="menu-label">设置</text>
+          <text class="menu-arrow">></text>
+        </view>
+        
+        <!-- 展开的设置子菜单 -->
+        <view class="settings-submenu" v-if="showSettingsMenu">
+          <view class="submenu-item" @click="goPage('/pages/mine/profile')">
+            <text class="submenu-icon">👤</text>
+            <text class="submenu-label">个人信息</text>
+            <text class="menu-arrow">></text>
+          </view>
+          <view class="submenu-item" @click="goPage('/pages/mine/my-kaoyan')">
+            <text class="submenu-icon">📝</text>
+            <text class="submenu-label">我的考研信息</text>
+            <text class="menu-arrow">></text>
+          </view>
+          <view class="submenu-item" @click="goFeedback">
+            <text class="submenu-icon">💭</text>
+            <text class="submenu-label">意见反馈</text>
+            <text class="menu-arrow">></text>
+          </view>
+          <!-- 订阅消息设置 -->
+          <view class="submenu-item" @click="goSubscribe">
+            <text class="submenu-icon">📢</text>
+            <text class="submenu-label">微信订阅消息</text>
+            <text class="menu-arrow">></text>
+          </view>
+          <view class="submenu-item delete-account" v-if="userInfo" @click="deleteAccount">
+            <text class="submenu-icon delete-icon">🗑️</text>
+            <view class="delete-label-wrapper">
+              <text class="submenu-label delete-label">注销账号</text>
+              <text v-if="deleteStatus.is_deleting" class="delete-status">注销中 {{ deleteStatus.days_left }} 天后</text>
+            </view>
+            <text class="menu-arrow">></text>
+          </view>
         </view>
         
         <view class="menu-item" v-if="userInfo" @click="logout">
@@ -166,7 +187,8 @@ import { getAvatarUrl } from '@/utils/url'
 const userInfo = ref(null)
 const stats = ref({})
 const favoriteCount = ref(0)
-const showSettings = ref(false)
+const showSettingsMenu = ref(false)
+const deleteStatus = ref({ is_deleting: false, days_left: 0 })
 const unreadCount = ref(0)
 const hasPendingCert = ref(false)
 
@@ -254,6 +276,17 @@ const goFeedback = () => {
   uni.navigateTo({ url: '/pages/mine/feedback' })
 }
 
+const goSubscribe = () => {
+  if (!userInfo.value) {
+    return uni.navigateTo({ url: '/pages/login/login' })
+  }
+  uni.navigateTo({ url: '/pages/mine/subscribe' })
+}
+
+const toggleSettingsMenu = () => {
+  showSettingsMenu.value = !showSettingsMenu.value
+}
+
 const logout = () => {
   uni.showModal({
     title: '提示',
@@ -266,6 +299,81 @@ const logout = () => {
         stats.value = {}
         favoriteCount.value = 0
         uni.showToast({ title: '已退出登录', icon: 'success' })
+      }
+    }
+  })
+}
+
+const loadDeleteStatus = async () => {
+  const token = uni.getStorageSync('token')
+  if (!token) {
+    deleteStatus.value = { is_deleting: false, days_left: 0 }
+    return
+  }
+  
+  try {
+    const res = await userApi.getDeleteStatus()
+    if (res.code === 200) {
+      deleteStatus.value = res.data
+    }
+  } catch (err) {
+    console.error('获取注销状态失败:', err)
+  }
+}
+
+const deleteAccount = () => {
+  // 如果已经在注销中，询问是否取消
+  if (deleteStatus.is_deleting) {
+    uni.showModal({
+      title: '提示',
+      content: `您的账号已在注销冷静期中，还有 ${deleteStatus.days_left} 天自动注销。是否取消注销？`,
+      confirmText: '取消注销',
+      confirmColor: '#07c160',
+      cancelText: '继续注销',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await userApi.cancelDeleteAccount()
+            uni.showToast({ 
+              title: '注销申请已取消', 
+              icon: 'success' 
+            })
+            await loadDeleteStatus()
+          } catch (err) {
+            console.error('取消注销失败:', err)
+          }
+        }
+      }
+    })
+    return
+  }
+  
+  uni.showModal({
+    title: '警告',
+    content: '确定要注销账号吗？注销后将有3天冷静期，冷静期内重新登录可恢复账号。冷静期后账号及所有数据将被永久删除。',
+    confirmText: '确认注销',
+    confirmColor: '#ff3b30',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const resp = await userApi.deleteAccountRequest()
+          if (resp.code === 200) {
+            uni.showModal({
+              title: '提示',
+              content: resp.msg,
+              showCancel: false,
+              success: async () => {
+                await loadDeleteStatus()
+              }
+            })
+          }
+        } catch (err) {
+          console.error('提交注销申请失败:', err)
+          uni.showToast({ 
+            title: '提交注销申请失败', 
+            icon: 'none' 
+          })
+        }
       }
     }
   })
@@ -308,6 +416,7 @@ onShow(() => {
   loadStats()
   loadUnreadCount()
   loadCertStatus()
+  loadDeleteStatus()
 })
 </script>
 
@@ -456,6 +565,11 @@ onShow(() => {
   text-align: center;
 }
 
+.settings-icon {
+  color: #999;
+  filter: grayscale(100%);
+}
+
 .menu-label {
   flex: 1;
   font-size: 30rpx;
@@ -504,6 +618,57 @@ onShow(() => {
 .menu-arrow {
   font-size: 28rpx;
   color: #ccc;
+}
+
+.settings-submenu {
+  background: #fafafa;
+  border-top: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 30rpx 24rpx 74rpx;
+  transition: background 0.2s;
+}
+
+.submenu-item:active {
+  background: #f0f0f0;
+}
+
+.submenu-icon {
+  font-size: 32rpx;
+  margin-right: 20rpx;
+  width: 44rpx;
+  text-align: center;
+}
+
+.submenu-label {
+  flex: 1;
+  font-size: 28rpx;
+  color: #555;
+}
+
+.delete-account .delete-icon {
+  filter: hue-rotate(180deg) saturate(1.5);
+}
+
+.delete-label-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.delete-account .delete-label {
+  color: #ff3b30;
+}
+
+.delete-status {
+  font-size: 22rpx;
+  color: #ff9500;
+  margin-top: 4rpx;
 }
 
 .version-info {

@@ -15,5 +15,11 @@ module.exports = {
   upload: {
     maxFileSize: 50 * 1024 * 1024,
     allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+  },
+  wechat: {
+    appId: process.env.WECHAT_APPID || 'touristappid',
+    appSecret: process.env.WECHAT_APPSECRET || '',
+    notificationTemplate: process.env.WECHAT_NOTIFICATION_TEMPLATE || '',
+    messageTemplate: process.env.WECHAT_MESSAGE_TEMPLATE || ''
   }
 }

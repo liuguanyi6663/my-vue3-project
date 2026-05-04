@@ -18,11 +18,14 @@ CREATE TABLE IF NOT EXISTS `users` (
   `status` TINYINT DEFAULT 1 COMMENT '状态 1正常 0禁用',
   `is_banned` TINYINT DEFAULT 0 COMMENT '是否禁言',
   `is_landed` TINYINT DEFAULT 0 COMMENT '是否已上岸认证 1是 0否',
+  `is_deleting` TINYINT DEFAULT 0 COMMENT '是否在注销冷静期 1是 0否',
+  `delete_request_at` DATETIME DEFAULT NULL COMMENT '注销请求时间',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_openid` (`openid`),
   INDEX `idx_phone` (`phone`),
-  INDEX `idx_student_id` (`student_id`)
+  INDEX `idx_student_id` (`student_id`),
+  INDEX `idx_is_deleting` (`is_deleting`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 通知公告表

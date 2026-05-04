@@ -4,7 +4,12 @@ export const userApi = {
   login: (data) => post('/user/login', data),
   getInfo: () => get('/user/info'),
   updateProfile: (data) => put('/user/profile', data),
-  getPublicInfo: (id) => get(`/user/public/${id}`)
+  getPublicInfo: (id) => get(`/user/public/${id}`),
+  deleteAccountRequest: () => post('/user/delete-request'),
+  cancelDeleteAccount: () => post('/user/cancel-delete'),
+  getDeleteStatus: () => get('/user/delete-status'),
+  wechatSession: (code) => post('/user/wechat/session', { code }),
+  wechatPhone: (code) => post('/user/wechat/phone', { code })
 }
 
 export const homeApi = {
@@ -86,6 +91,7 @@ export const forumApi = {
   createPost: (data) => post('/forum/posts', data),
   deletePost: (id) => del(`/forum/posts/${id}`),
   getMyPosts: (params) => get('/forum/my-posts', params),
+  getUserPosts: (userId, params) => get(`/forum/user-posts/${userId}`, params),
   uploadImage: (filePath) => {
     const token = uni.getStorageSync('token')
     return new Promise((resolve, reject) => {
@@ -193,7 +199,20 @@ export const messageApi = {
   getUnreadCount: () => get('/message/unread-count'),
   blockUser: (blocked_user_id) => post('/message/block', { blocked_user_id }),
   unblockUser: (blocked_user_id) => post('/message/unblock', { blocked_user_id }),
-  checkBlock: (userId) => get(`/message/check-block/${userId}`)
+  checkBlock: (userId) => get(`/message/check-block/${userId}`),
+  subscribe: (template_id, scene) => {
+    if (!template_id) {
+      return Promise.reject(new Error('模板ID不能为空'))
+    }
+    return post('/message/subscribe', { template_id, scene })
+  },
+  getSubscriptions: () => get('/message/subscriptions'),
+  unsubscribe: (template_id) => {
+    if (!template_id) {
+      return Promise.reject(new Error('模板ID不能为空'))
+    }
+    return del(`/message/subscribe/${template_id}`)
+  }
 }
 
 export const nationalLineApi = {

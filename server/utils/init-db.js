@@ -505,6 +505,14 @@ const initDatabase = async () => {
       await db.query("ALTER TABLE users ADD COLUMN is_landed TINYINT DEFAULT 0 COMMENT '是否已上岸认证 1是 0否'")
       console.log('✅ users表添加is_landed字段')
     }
+    if (!userColNames.includes('is_deleting')) {
+      await db.query("ALTER TABLE users ADD COLUMN is_deleting TINYINT DEFAULT 0 COMMENT '是否在注销冷静期 1是 0否'")
+      console.log('✅ users表添加is_deleting字段')
+    }
+    if (!userColNames.includes('delete_request_at')) {
+      await db.query("ALTER TABLE users ADD COLUMN delete_request_at DATETIME DEFAULT NULL COMMENT '注销请求时间'")
+      console.log('✅ users表添加delete_request_at字段')
+    }
 
     console.log('✅ 数据库表初始化完成')
 

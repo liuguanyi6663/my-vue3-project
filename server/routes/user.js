@@ -7,6 +7,7 @@ const { success, error } = require('../utils/response')
 const config = require('../config/index')
 const { auth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
+const weixin = require('../utils/wechat')
 
 router.post('/login', async (req, res) => {
   try {
@@ -107,6 +108,16 @@ router.post('/login', async (req, res) => {
       return res.json(error('账号已被禁用', 403))
     }
     
+    // 如果用户在注销冷静期内重新登录，自动取消注销
+    if (user.is_deleting === 1) {
+      await db.query(
+        'UPDATE users SET is_deleting = 0, delete_request_at = NULL WHERE id = ?',
+        [user.id]
+      )
+      user.is_deleting = 0
+      user.delete_request_at = null
+    }
+    
     const token = jwt.sign({ userId: user.id }, config.jwt.secret, { expiresIn: config.jwt.expiresIn })
     
     res.json(success({
@@ -167,16 +178,168 @@ router.post('/avatar', auth, upload.single('file'), async (req, res) => {
 
 router.get('/public/:id', async (req, res) => {
   try {
+    console.log('获取用户公共信息，用户ID:', req.params.id)
     const users = await db.query(
-      'SELECT id, nickname, avatar, college, major, target_school, target_major, exam_year, is_landed, created_at FROM users WHERE id=? AND status=1',
+      'SELECT id, nickname, avatar, college, major, target_school, target_major, exam_year, is_landed, created_at FROM users WHERE id=? AND status=1 AND is_deleting=0',
       [req.params.id]
     )
+    console.log('查询到的用户:', users)
     if (users.length === 0) {
       return res.json(error('用户不存在'))
     }
     res.json(success(users[0]))
   } catch (err) {
+    console.error('获取用户公共信息错误:', err)
     res.json(error('获取用户信息失败'))
+  }
+})
+
+// 注销账号 - 发起注销请求
+router.post('/delete-request', auth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    
+    // 检查用户是否已经在注销中
+    const users = await db.query('SELECT * FROM users WHERE id = ?', [userId])
+    if (users.length === 0) {
+      return res.json(error('用户不存在'))
+    }
+    
+    const user = users[0]
+    if (user.is_deleting === 1) {
+      const deleteRequestAt = new Date(user.delete_request_at)
+      const now = new Date()
+      const daysLeft = Math.ceil((3 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
+      return res.json(success({ 
+        is_deleting: true, 
+        delete_request_at: user.delete_request_at,
+        days_left: daysLeft > 0 ? daysLeft : 0
+      }, '账号已在注销冷静期中'))
+    }
+    
+    // 更新用户状态为注销中
+    await db.query(
+      'UPDATE users SET is_deleting = 1, delete_request_at = NOW() WHERE id = ?',
+      [userId]
+    )
+    
+    res.json(success({ is_deleting: true, delete_request_at: new Date(), days_left: 3 }, '注销申请已提交，3天冷静期后将彻底删除账号'))
+  } catch (err) {
+    console.error(err)
+    res.json(error('提交注销申请失败'))
+  }
+})
+
+// 取消注销账号
+router.post('/cancel-delete', auth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    
+    // 更新用户状态为正常
+    await db.query(
+      'UPDATE users SET is_deleting = 0, delete_request_at = NULL WHERE id = ?',
+      [userId]
+    )
+    
+    res.json(success(null, '注销申请已取消'))
+  } catch (err) {
+    console.error(err)
+    res.json(error('取消注销申请失败'))
+  }
+})
+
+// 获取注销状态
+router.get('/delete-status', auth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const users = await db.query('SELECT is_deleting, delete_request_at FROM users WHERE id = ?', [userId])
+    
+    if (users.length === 0) {
+      return res.json(error('用户不存在'))
+    }
+    
+    const user = users[0]
+    let daysLeft = 0
+    
+    if (user.is_deleting === 1 && user.delete_request_at) {
+      const deleteRequestAt = new Date(user.delete_request_at)
+      const now = new Date()
+      daysLeft = Math.ceil((3 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
+      daysLeft = daysLeft > 0 ? daysLeft : 0
+    }
+    
+    res.json(success({
+      is_deleting: user.is_deleting === 1,
+      delete_request_at: user.delete_request_at,
+      days_left: daysLeft
+    }))
+  } catch (err) {
+    console.error(err)
+    res.json(error('获取注销状态失败'))
+  }
+})
+
+// 微信登录：获取微信session（openid, unionid等）
+router.post('/wechat/session', async (req, res) => {
+  try {
+    const { code } = req.body
+    if (!code) {
+      return res.json(error('缺少微信登录code'))
+    }
+
+    // 检查是否配置了微信小程序信息
+    if (weixin.appId === 'touristappid' || !weixin.appSecret) {
+      console.warn('微信小程序未配置，返回模拟数据用于测试')
+      return res.json(success({
+        openid: 'test_openid_' + Date.now(),
+        unionid: 'test_unionid_' + Date.now(),
+        session_key: 'test_session_key_' + Date.now()
+      }, '获取微信登录信息成功（测试模式）'))
+    }
+
+    const session = await weixin.code2Session(code)
+    if (!session) {
+      return res.json(error('获取微信登录信息失败，请检查微信配置'))
+    }
+
+    res.json(success({
+      openid: session.openid,
+      unionid: session.unionid,
+      session_key: session.session_key
+    }, '获取微信登录信息成功'))
+  } catch (err) {
+    console.error(err)
+    res.json(error('获取微信登录信息失败: ' + (err.message || '未知错误')))
+  }
+})
+
+// 微信登录：获取手机号
+router.post('/wechat/phone', async (req, res) => {
+  try {
+    const { code } = req.body
+    if (!code) {
+      return res.json(error('缺少手机号授权code'))
+    }
+
+    // 检查是否配置了微信小程序信息
+    if (weixin.appId === 'touristappid' || !weixin.appSecret) {
+      console.warn('微信小程序未配置，返回模拟手机号用于测试')
+      return res.json(success({
+        phone_number: '1380000' + String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+      }, '获取手机号成功（测试模式）'))
+    }
+
+    const phoneInfo = await weixin.getPhoneNumber(code)
+    if (!phoneInfo || !phoneInfo.phoneNumber) {
+      return res.json(error('获取手机号失败，请检查微信配置或确认是企业认证小程序'))
+    }
+
+    res.json(success({
+      phone_number: phoneInfo.phoneNumber
+    }, '获取手机号成功'))
+  } catch (err) {
+    console.error(err)
+    res.json(error('获取手机号失败: ' + (err.message || '未知错误')))
   }
 })
 

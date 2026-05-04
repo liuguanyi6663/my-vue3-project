@@ -6,6 +6,7 @@ const { adminAuth, superAdminAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 const { getCurrentYear } = require('../utils/date')
 const ExcelJS = require('exceljs')
+const wechat = require('../utils/wechat')
 
 router.get('/users', adminAuth, async (req, res) => {
   try {
@@ -598,8 +599,16 @@ router.post('/notifications', adminAuth, async (req, res) => {
       'INSERT INTO notifications (title, content, type, is_top, is_strong_remind, publisher_id) VALUES (?, ?, ?, ?, ?, ?)',
       [title, content, type || 'notice', is_top ? 1 : 0, is_strong_remind ? 1 : 0, req.user.id]
     )
+
+    // 强提醒时发送微信订阅消息
+    if (is_strong_remind) {
+      wechat.sendNotificationToSubscribedUsers(title, content || '', type)
+        .catch(err => console.error('发送通知推送失败:', err))
+    }
+
     res.json(success({ id: result.insertId }, '发布成功'))
   } catch (err) {
+    console.error('发布通知失败:', err)
     res.json(error('发布失败'))
   }
 })

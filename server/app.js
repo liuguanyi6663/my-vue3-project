@@ -85,11 +85,14 @@ app.use((err, req, res, next) => {
 
 const config = require('./config/index')
 const initDatabase = require('./utils/init-db')
+const { startCleanupJob } = require('./utils/accountCleanup')
 
 const startServer = async () => {
   try {
     await initDatabase()
     await initSensitiveWords()
+    // 启动账号清理定时任务
+    startCleanupJob()
     console.log('✅ 系统初始化完成')
 
     app.listen(config.port, () => {

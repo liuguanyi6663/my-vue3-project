@@ -1,5 +1,18 @@
 <template>
   <view class="page">
+    <!-- 搜索框 -->
+    <view class="search-bar">
+      <view class="search-input-wrapper">
+        <input 
+          class="search-input" 
+          v-model="searchKeyword"
+          placeholder="搜索帖子关键词"
+          @confirm="handleSearch"
+        />
+        <text v-if="searchKeyword" class="clear-icon" @click="clearSearch">✕</text>
+      </view>
+    </view>
+    
     <!-- 板块切换 -->
     <scroll-view scroll-x class="tab-scroll">
       <view class="tab-list">
@@ -29,6 +42,12 @@
         :class="{ active: sortType === 'comment' }"
         @click="changeSort('comment')"
       >热评</text>
+    </view>
+
+    <!-- 搜索结果提示 -->
+    <view v-if="searchKeyword" class="search-result-bar">
+      <text class="search-result-text">搜索「{{ searchKeyword }}」的结果</text>
+      <text class="clear-search-btn" @click="clearSearch">清除搜索</text>
     </view>
 
     <!-- 帖子列表 -->
@@ -127,6 +146,7 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = 10
 const hasMore = ref(true)
+const searchKeyword = ref('')
 
 const getCurrentUser = () => {
   try {
@@ -168,18 +188,21 @@ const loadPosts = async (isRefresh = false) => {
   }
 
   try {
-    console.log('开始加载帖子，参数:', {
-      category: currentTab.value,
+    const params = {
       sort: sortType.value,
       page: page.value,
       pageSize
-    })
-    const res = await forumApi.getPosts({
-      category: currentTab.value,
-      sort: sortType.value,
-      page: page.value,
-      pageSize
-    })
+    }
+    
+    // 如果有搜索关键词，就不限制分类；如果没有搜索，就限制当前分类
+    if (searchKeyword.value) {
+      params.keyword = searchKeyword.value
+    } else {
+      params.category = currentTab.value
+    }
+    
+    console.log('开始加载帖子，参数:', params)
+    const res = await forumApi.getPosts(params)
     console.log('接口返回完整数据:', res)
     
     let list = res.data?.list || []
@@ -230,11 +253,24 @@ const onLoad = (options) => {
 
 const switchTab = (tab) => {
   currentTab.value = tab
+  // 切换板块时清空搜索
+  if (searchKeyword.value) {
+    searchKeyword.value = ''
+  }
   loadPosts(true)
 }
 
 const changeSort = (type) => {
   sortType.value = type
+  loadPosts(true)
+}
+
+const handleSearch = () => {
+  loadPosts(true)
+}
+
+const clearSearch = () => {
+  searchKeyword.value = ''
   loadPosts(true)
 }
 
@@ -251,10 +287,12 @@ const toggleLike = async (item) => {
 const goDetail = (id) => uni.navigateTo({ url: `/pages/forum/detail?id=${id}` })
 const goUserProfile = (userId, isAnonymous) => {
   if (!userId || isAnonymous) return
-  const currentUserId = uni.getStorageSync('userInfo')
+  let currentUserInfo = uni.getStorageSync('userInfo')
   try {
-    const parsed = JSON.parse(currentUserId)
-    if (parsed && parsed.id === userId) {
+    if (typeof currentUserInfo === 'string') {
+      currentUserInfo = JSON.parse(currentUserInfo)
+    }
+    if (currentUserInfo && currentUserInfo.id === userId) {
       uni.navigateTo({ url: '/pages/mine/profile' })
       return
     }
@@ -339,6 +377,52 @@ onShow(() => {
 .page {
   min-height: 100vh;
   background: #f5f5f5;
+}
+
+.search-bar {
+  background: #fff;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border-radius: 40rpx;
+  padding: 16rpx 24rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.clear-icon {
+  font-size: 32rpx;
+  color: #999;
+  margin-left: 12rpx;
+  padding: 4rpx;
+}
+
+.search-result-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff3e0;
+  padding: 16rpx 24rpx;
+  margin: 0;
+}
+
+.search-result-text {
+  font-size: 26rpx;
+  color: #ff9500;
+}
+
+.clear-search-btn {
+  font-size: 26rpx;
+  color: #999;
 }
 
 .tab-scroll {
