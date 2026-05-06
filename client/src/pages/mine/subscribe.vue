@@ -43,11 +43,10 @@
             :checked="subscriptions.notification"
             @change="toggleNotification"
             color="#4CAF50"
-            :disabled="!TEMPLATE_IDS.notification"
           />
         </view>
-        <view v-if="!TEMPLATE_IDS.notification" class="config-hint">
-          <text>⚠️ 请先在代码中配置模板ID</text>
+        <view v-if="!templateAvailable.notification" class="config-hint">
+          <text>⚠️ 请先在后台配置模板</text>
         </view>
       </view>
 
@@ -63,11 +62,10 @@
             :checked="subscriptions.message"
             @change="toggleMessage"
             color="#4CAF50"
-            :disabled="!TEMPLATE_IDS.message"
           />
         </view>
-        <view v-if="!TEMPLATE_IDS.message" class="config-hint">
-          <text>⚠️ 请先在代码中配置模板ID</text>
+        <view v-if="!templateAvailable.message" class="config-hint">
+          <text>⚠️ 请先在后台配置模板</text>
         </view>
       </view>
 
@@ -96,12 +94,32 @@ const subscriptions = ref({
   notification: false,
   message: false
 })
+const templateAvailable = ref({
+  notification: false,
+  message: false
+})
+const templateIds = ref({
+  notification: '',
+  message: ''
+})
 const userSubscriptions = ref([])
 
-// 订阅消息模板ID（需要在微信小程序后台配置后替换）
-const TEMPLATE_IDS = {
-  notification: '', // 通知提醒模板ID
-  message: ''       // 消息提醒模板ID
+const loadTemplateConfig = async () => {
+  try {
+    const res = await messageApi.getSubscribeTemplates()
+    if (res.code === 200) {
+      templateAvailable.value = {
+        notification: res.data.notification,
+        message: res.data.message
+      }
+      templateIds.value = {
+        notification: res.data.notificationTemplateId || '',
+        message: res.data.messageTemplateId || ''
+      }
+    }
+  } catch (e) {
+    console.error('加载模板配置失败:', e)
+  }
 }
 
 const loadSubscriptions = async () => {
@@ -111,18 +129,9 @@ const loadSubscriptions = async () => {
       const list = res.data || []
       userSubscriptions.value = list
       
-      // 如果有配置模板ID，根据模板ID匹配
-      if (TEMPLATE_IDS.notification) {
-        subscriptions.value.notification = list.some(
-          s => s.template_id === TEMPLATE_IDS.notification
-        )
-      }
-      
-      if (TEMPLATE_IDS.message) {
-        subscriptions.value.message = list.some(
-          s => s.template_id === TEMPLATE_IDS.message
-        )
-      }
+      // 根据用户订阅列表来设置开关状态
+      subscriptions.value.notification = list.some(s => s.scene === 'notification')
+      subscriptions.value.message = list.some(s => s.scene === 'message')
     }
   } catch (e) {
     console.error('加载订阅状态失败:', e)
@@ -174,95 +183,72 @@ const requestSubscribe = async (templateId, scene) => {
   })
 }
 
-const getTemplateIdByKey = (key) => {
-  if (TEMPLATE_IDS[key]) {
-    return TEMPLATE_IDS[key]
-  }
-  // 如果没有配置模板ID，从用户订阅列表中找第一个对应的
-  const subscription = userSubscriptions.value.find(s => s.scene === key)
-  return subscription ? subscription.template_id : null
-}
-
 const toggleNotification = async (e) => {
-  const templateId = getTemplateIdByKey('notification')
-  
+  if (!templateAvailable.value.notification) {
+    uni.showToast({
+      title: '请先在后台配置模板',
+      icon: 'none'
+    })
+    subscriptions.value.notification = false
+    return
+  }
+
   if (e.detail.value) {
-    if (!templateId) {
-      uni.showToast({
-        title: '请先配置模板ID',
-        icon: 'none'
-      })
-      // 恢复开关状态
-      subscriptions.value.notification = false
-      return
-    }
-    
-    const success = await requestSubscribe(templateId, 'notification')
+    const success = await requestSubscribe(templateIds.value.notification, 'notification')
     if (success) {
       subscriptions.value.notification = true
-      await loadSubscriptions() // 重新加载订阅列表
+      await loadSubscriptions()
     }
   } else {
-    if (!templateId) {
-      // 没有找到模板ID，直接关闭开关
-      subscriptions.value.notification = false
-      return
-    }
-    
-    try {
-      await messageApi.unsubscribe(templateId)
-      subscriptions.value.notification = false
-      await loadSubscriptions() // 重新加载订阅列表
-      uni.showToast({
-        title: '已取消订阅',
-        icon: 'success'
-      })
-    } catch (e) {
-      console.error('取消订阅失败:', e)
-      // 恢复开关状态
-      subscriptions.value.notification = true
+    const subscription = userSubscriptions.value.find(s => s.scene === 'notification')
+    if (subscription) {
+      try {
+        await messageApi.unsubscribe(subscription.template_id)
+        subscriptions.value.notification = false
+        await loadSubscriptions()
+        uni.showToast({
+          title: '已取消订阅',
+          icon: 'success'
+        })
+      } catch (e) {
+        console.error('取消订阅失败:', e)
+        subscriptions.value.notification = true
+      }
     }
   }
 }
 
 const toggleMessage = async (e) => {
-  const templateId = getTemplateIdByKey('message')
-  
+  if (!templateAvailable.value.message) {
+    uni.showToast({
+      title: '请先在后台配置模板',
+      icon: 'none'
+    })
+    subscriptions.value.message = false
+    return
+  }
+
   if (e.detail.value) {
-    if (!templateId) {
-      uni.showToast({
-        title: '请先配置模板ID',
-        icon: 'none'
-      })
-      // 恢复开关状态
-      subscriptions.value.message = false
-      return
-    }
-    
-    const success = await requestSubscribe(templateId, 'message')
+    const success = await requestSubscribe(templateIds.value.message, 'message')
     if (success) {
       subscriptions.value.message = true
-      await loadSubscriptions() // 重新加载订阅列表
+      await loadSubscriptions()
     }
   } else {
-    if (!templateId) {
-      // 没有找到模板ID，直接关闭开关
-      subscriptions.value.message = false
-      return
-    }
-    
-    try {
-      await messageApi.unsubscribe(templateId)
-      subscriptions.value.message = false
-      await loadSubscriptions() // 重新加载订阅列表
-      uni.showToast({
-        title: '已取消订阅',
-        icon: 'success'
-      })
-    } catch (e) {
-      console.error('取消订阅失败:', e)
-      // 恢复开关状态
-      subscriptions.value.message = true
+    const subscription = userSubscriptions.value.find(s => s.scene === 'message')
+    if (subscription) {
+      try {
+        await messageApi.unsubscribe(subscription.template_id)
+        subscriptions.value.message = false
+        await loadSubscriptions()
+        uni.showToast({
+          title: '已取消订阅',
+          icon: 'success'
+        })
+      } catch (e) {
+        console.error('取消订阅失败:', e)
+        subscriptions.value.message = true
+      }
     }
   }
 }
@@ -287,7 +273,7 @@ const cancelSubscription = async (templateId) => {
             title: '已取消订阅',
             icon: 'success'
           })
-          await loadSubscriptions() // 重新加载订阅列表
+          await loadSubscriptions()
         } catch (e) {
           console.error('取消订阅失败:', e)
           uni.showToast({
@@ -316,6 +302,7 @@ const formatDate = (dateStr) => {
 }
 
 onMounted(() => {
+  loadTemplateConfig()
   loadSubscriptions()
 })
 </script>

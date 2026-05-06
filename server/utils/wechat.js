@@ -1,10 +1,13 @@
 const axios = require('axios')
 const db = require('./db')
+const config = require('../config/index')
 
 class WeChatManager {
   constructor() {
-    this.appId = process.env.WECHAT_APPID || 'touristappid'
-    this.appSecret = process.env.WECHAT_APPSECRET || ''
+    this.appId = config.wechat.appId
+    this.appSecret = config.wechat.appSecret
+    this.notificationTemplate = config.wechat.notificationTemplate
+    this.messageTemplate = config.wechat.messageTemplate
     this.accessToken = null
     this.tokenExpireTime = 0
   }
@@ -179,7 +182,7 @@ class WeChatManager {
 
   async sendNotificationToSubscribedUsers(title, content, type = 'notice') {
     try {
-      const templateId = process.env.WECHAT_NOTIFICATION_TEMPLATE || ''
+      const templateId = this.notificationTemplate
       if (!templateId) {
         console.error('未配置通知消息模板ID')
         return []
@@ -217,7 +220,7 @@ class WeChatManager {
 
   async sendMessageNotification(senderNickname, receiverId, messageContent) {
     try {
-      const templateId = process.env.WECHAT_MESSAGE_TEMPLATE || ''
+      const templateId = this.messageTemplate
       if (!templateId) {
         console.error('未配置消息提醒模板ID')
         return false

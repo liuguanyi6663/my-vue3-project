@@ -201,18 +201,14 @@ export const messageApi = {
   unblockUser: (blocked_user_id) => post('/message/unblock', { blocked_user_id }),
   checkBlock: (userId) => get(`/message/check-block/${userId}`),
   subscribe: (template_id, scene) => {
-    if (!template_id) {
-      return Promise.reject(new Error('模板ID不能为空'))
-    }
     return post('/message/subscribe', { template_id, scene })
   },
   getSubscriptions: () => get('/message/subscriptions'),
   unsubscribe: (template_id) => {
-    if (!template_id) {
-      return Promise.reject(new Error('模板ID不能为空'))
-    }
     return del(`/message/subscribe/${template_id}`)
-  }
+  },
+  getSubscribeTemplates: () => get('/message/subscribe/templates'),
+  deleteConversation: (otherUserId) => del(`/message/conversation/${otherUserId}`)
 }
 
 export const nationalLineApi = {

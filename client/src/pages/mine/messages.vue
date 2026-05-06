@@ -4,8 +4,11 @@
       <view 
         class="conv-item" 
         v-for="(item, index) in conversations" 
-        :key="index"
+        :key="item.other_user_id"
         @click="goChat(item)"
+        @touchstart="handleTouchStart($event, item)"
+        @touchend="handleTouchEnd"
+        @longpress="handleLongPress(item)"
       >
         <image class="conv-avatar" :src="getAvatarUrl(item.other_avatar)" mode="aspectFill" />
         <view class="conv-info">
@@ -41,6 +44,8 @@ import { formatMessageTime } from '@/utils/date'
 
 const conversations = ref([])
 const loading = ref(false)
+let touchStartTime = 0
+let touchStartItem = null
 
 const loadConversations = async () => {
   loading.value = true
@@ -59,6 +64,49 @@ const loadConversations = async () => {
 const goChat = (item) => {
   uni.navigateTo({ 
     url: `/pages/mine/chat?userId=${item.other_user_id}&nickname=${encodeURIComponent(item.other_nickname)}` 
+  })
+}
+
+const handleTouchStart = (e, item) => {
+  touchStartTime = Date.now()
+  touchStartItem = item
+}
+
+const handleTouchEnd = () => {
+  touchStartTime = 0
+  touchStartItem = null
+}
+
+const handleLongPress = (item) => {
+  uni.showModal({
+    title: '删除对话',
+    content: '确定要删除与 "' + item.other_nickname + '" 的对话记录吗？\n\n⚠️ 注意：此操作只会删除您这边的聊天记录，对方仍然可以看到完整的对话历史。',
+    confirmColor: '#FF4D4F',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const deleteRes = await messageApi.deleteConversation(item.other_user_id)
+          if (deleteRes.code === 200) {
+            uni.showToast({
+              title: '删除成功',
+              icon: 'success'
+            })
+            loadConversations()
+          } else {
+            uni.showToast({
+              title: deleteRes.msg || '删除失败',
+              icon: 'none'
+            })
+          }
+        } catch (e) {
+          console.error('删除对话失败:', e)
+          uni.showToast({
+            title: '删除失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
   })
 }
 

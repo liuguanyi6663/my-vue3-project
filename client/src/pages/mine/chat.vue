@@ -23,7 +23,7 @@
         <text class="blocking-bar-btn" @click="handleUnblock">取消屏蔽</text>
       </view>
       
-      <view v-if="showFirstMessageTip && !isBlocking" class="tip-bar">
+      <view v-if="showFirstMessageTip && !isBlocking && !isDeleted" class="tip-bar">
         <text class="tip-bar-text">💡 对方回复你时，你只能发送一条消息</text>
       </view>
       
@@ -61,7 +61,7 @@
         </view>
       </view>
 
-      <view v-if="displayMessages.length === 0 && !loading" class="empty-state">
+      <view v-if="!loading && displayMessages.length === 0" class="empty-state">
         <text class="empty-text">暂无消息，发送第一条消息吧~</text>
       </view>
 
@@ -138,6 +138,7 @@ const messages = ref([])
 const inputText = ref('')
 const isBanned = ref(false)
 const isBlocking = ref(false)
+const isDeleted = ref(false)
 const sending = ref(false)
 const loading = ref(false)
 const currentUserId = ref(0)
@@ -175,7 +176,7 @@ const goBack = () => {
 }
 
 const showActionSheet = () => {
-  const itemList = isBlocking.value ? ['取消屏蔽'] : ['屏蔽用户']
+  const itemList = isBlocking.value ? ['取消屏蔽', '清除聊天记录'] : ['屏蔽用户', '清除聊天记录']
   uni.showActionSheet({
     itemList: itemList,
     itemColor: '#333',
@@ -186,6 +187,8 @@ const showActionSheet = () => {
         } else {
           handleBlock()
         }
+      } else if (res.tapIndex === 1) {
+        handleClearChat()
       }
     }
   })
@@ -228,6 +231,40 @@ const handleUnblock = async () => {
     console.error('取消屏蔽失败:', err)
     uni.showToast({ title: '取消屏蔽失败', icon: 'none' })
   }
+}
+
+const handleClearChat = async () => {
+  uni.showModal({
+    title: '清除聊天记录',
+    content: '确定要清除与 ' + otherNickname.value + ' 的聊天记录吗？\n\n⚠️ 注意：此操作只会清除您这边的聊天记录，对方仍然可以看到完整的对话历史。',
+    confirmColor: '#ff4d4f',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const deleteRes = await messageApi.deleteConversation(otherUserId.value)
+          if (deleteRes.code === 200) {
+            uni.showToast({
+              title: '清除成功',
+              icon: 'success'
+            })
+            // 重新加载消息（会显示已清除状态）
+            await loadMessages()
+          } else {
+            uni.showToast({
+              title: deleteRes.msg || '清除失败',
+              icon: 'none'
+            })
+          }
+        } catch (err) {
+          console.error('清除聊天记录失败:', err)
+          uni.showToast({
+            title: '清除失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
 }
 
 const showMsgMenu = (msg) => {
@@ -282,9 +319,12 @@ const loadMessages = async () => {
     if (res.code === 200) {
       messages.value = res.data.messages || []
       isBlocking.value = res.data.is_blocking || false
+      isDeleted.value = res.data.is_deleted || false
       
-      // 判断是否需要显示提示
-      if (messages.value.length === 0) {
+      // 如果已删除对话，不显示提示
+      if (isDeleted.value) {
+        showFirstMessageTip.value = false
+      } else if (messages.value.length === 0) {
         // 没有消息，第一次聊天
         showFirstMessageTip.value = true
       } else {
@@ -325,9 +365,11 @@ const sendMsg = async () => {
     })
     if (res.code === 200) {
       inputText.value = ''
-      // 发送成功后，显示提示（因为我们已经发送了一条，需要等对方回复）
-      showFirstMessageTip.value = true
       await loadMessages()
+      // 发送成功后，如果是新对话，显示提示
+      if (messages.value.length === 1) {
+        showFirstMessageTip.value = true
+      }
     } else {
       uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
     }
@@ -697,6 +739,31 @@ onMounted(() => {
 .empty-text {
   font-size: 28rpx;
   color: #999;
+}
+
+.deleted-state {
+  text-align: center;
+  padding: 150rpx 0;
+}
+
+.deleted-icon {
+  font-size: 100rpx;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.deleted-text {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.deleted-hint {
+  font-size: 26rpx;
+  color: #999;
+  display: block;
 }
 
 .loading-tip {

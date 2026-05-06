@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
+require('dotenv').config()
 
 const userRoutes = require('./routes/user')
 const homeRoutes = require('./routes/home')
@@ -86,6 +87,7 @@ app.use((err, req, res, next) => {
 const config = require('./config/index')
 const initDatabase = require('./utils/init-db')
 const { startCleanupJob } = require('./utils/accountCleanup')
+const { startTimelineReminderJob } = require('./utils/timelineReminder')
 
 const startServer = async () => {
   try {
@@ -93,6 +95,8 @@ const startServer = async () => {
     await initSensitiveWords()
     // 启动账号清理定时任务
     startCleanupJob()
+    // 启动时间线提醒定时任务
+    startTimelineReminderJob()
     console.log('✅ 系统初始化完成')
 
     app.listen(config.port, () => {
