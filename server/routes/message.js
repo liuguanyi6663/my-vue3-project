@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 私信聊天
+ *   description: 会话列表、消息收发、用户屏蔽
+ */
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth } = require('../middleware/auth')

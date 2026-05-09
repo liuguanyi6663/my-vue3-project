@@ -2,7 +2,13 @@ const express = require('express')
 const router = express.Router()
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
-const { auth } = require('../middleware/auth')
+const { auth, optionalAuth } = require('../middleware/auth')
+
+/** @swagger
+ * tags:
+ *   name: 首页模块
+ *   description: 考研倒计时、时间线、励志文案、广告轮播、通知公告
+ */
 const { getTimeSeed } = require('../utils/date')
 
 router.get('/timeline', async (req, res) => {

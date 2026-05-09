@@ -71,6 +71,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { titleCertApi } from '@/api/index'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const screenshotPath = ref('')
 const screenshotUrl = ref('')
@@ -107,7 +108,12 @@ const loadRecords = async () => {
   }
 }
 
-const chooseImage = () => {
+const chooseImage = async () => {
+  // 请求相册权限
+  const authorized = await ensureAuthorize('chooseImage')
+  if (!authorized) return
+
+  // 权限授权成功，选择图片
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],

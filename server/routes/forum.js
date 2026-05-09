@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 论坛社区
+ *   description: 帖子发布、评论、点赞、收藏、板块管理
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth, optionalAuth } = require('../middleware/auth')

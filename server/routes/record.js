@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 考研数据
+ *   description: 考研信息录入、审核、统计导出
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth } = require('../middleware/auth')

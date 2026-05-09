@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <!-- 顶部提示 -->
     <view class="header-tip">
@@ -401,7 +401,7 @@ const validateForm = () => {
 const handleSubmit = async () => {
   if (!validateForm()) return
 
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showModal({
       title: '提示',

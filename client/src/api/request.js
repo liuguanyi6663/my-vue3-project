@@ -1,19 +1,15 @@
-const BASE_URL = 'http://127.0.0.1:3000/api'
+export const BASE_URL = 'http://127.0.0.1:3000/api'
 
-// 全局加载状态
 let loadingListeners = []
 
-// 触发加载状态变化
 function triggerLoadingChange(visible) {
   loadingListeners.forEach(callback => callback(visible))
 }
 
-// 添加监听器
 export function addRequestLoadingListener(callback) {
   loadingListeners.push(callback)
 }
 
-// 移除监听器
 export function removeRequestLoadingListener(callback) {
   const index = loadingListeners.indexOf(callback)
   if (index > -1) {
@@ -21,120 +17,191 @@ export function removeRequestLoadingListener(callback) {
   }
 }
 
-// 检测网络状态
 function checkNetworkStatus() {
   return new Promise((resolve) => {
     uni.getNetworkType({
       success: (res) => {
         const networkType = res.networkType
-        // 2G、3G、unknown视为弱网
         const isWeakNetwork = ['2g', '3g', 'unknown'].includes(networkType.toLowerCase())
         resolve(isWeakNetwork)
       },
       fail: () => {
-        resolve(true) // 获取失败时默认视为弱网
+        resolve(true)
       }
     })
   })
 }
 
+let isRefreshing = false
+let refreshSubscribers = []
+
+function onRefreshed(newToken) {
+  refreshSubscribers.forEach(callback => callback(newToken))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(callback) {
+  refreshSubscribers.push(callback)
+}
+
+function getAccessToken() {
+  return uni.getStorageSync('accessToken')
+}
+
+function getRefreshToken() {
+  return uni.getStorageSync('refreshToken')
+}
+
+function setTokens(data) {
+  uni.setStorageSync('accessToken', data.accessToken)
+  uni.setStorageSync('refreshToken', data.refreshToken)
+}
+
+function clearTokens() {
+  uni.removeStorageSync('accessToken')
+  uni.removeStorageSync('refreshToken')
+}
+
+async function tryRefreshToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    clearTokens()
+    uni.removeStorageSync('userInfo')
+    return null
+  }
+
+  try {
+    const res = await new Promise((resolve, reject) => {
+      uni.request({
+        url: BASE_URL + '/user/refresh',
+        method: 'POST',
+        data: { refreshToken },
+        header: { 'Content-Type': 'application/json' },
+        success: (r) => {
+          if (r.statusCode === 200 && r.data.code === 200) {
+            resolve(r.data)
+          } else {
+            reject(r.data)
+          }
+        },
+        fail: (err) => reject(err)
+      })
+    })
+    setTokens(res.data)
+    return res.data.accessToken
+  } catch (err) {
+    clearTokens()
+    uni.removeStorageSync('userInfo')
+    return null
+  }
+}
+
 const request = async (options) => {
   let showLoadingFlag = false
   let loadingTimeout = null
-  
+
   try {
-    // 检测网络状态
     const isWeakNetwork = await checkNetworkStatus()
-    
-    // 如果是弱网，显示加载动画
+
     if (isWeakNetwork) {
       showLoadingFlag = true
       triggerLoadingChange(true)
     } else {
-      // 即使网络好，也设置一个超时时间，超过500ms自动显示加载
       loadingTimeout = setTimeout(() => {
         showLoadingFlag = true
         triggerLoadingChange(true)
       }, 500)
     }
-    
-    return new Promise((resolve, reject) => {
-      const token = uni.getStorageSync('token')
-      
-      let fullUrl = BASE_URL + options.url
-      let requestData = options.data
-      
-      // 处理 GET 请求的参数，拼接到 URL 上
-      if ((options.method === 'GET' || options.method === 'DELETE') && requestData && Object.keys(requestData).length > 0) {
-        const queryString = Object.keys(requestData)
-          .filter(key => requestData[key] !== undefined && requestData[key] !== null && requestData[key] !== '')
-          .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(requestData[key])}`)
-          .join('&')
-        if (queryString) {
-          fullUrl = `${fullUrl}?${queryString}`
+
+    const executeRequest = (token) => {
+      return new Promise((resolve, reject) => {
+        let fullUrl = BASE_URL + options.url
+        let requestData = options.data
+
+        if ((options.method === 'GET' || options.method === 'DELETE') && requestData && Object.keys(requestData).length > 0) {
+          const queryString = Object.keys(requestData)
+            .filter(key => requestData[key] !== undefined && requestData[key] !== null && requestData[key] !== '')
+            .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(requestData[key])}`)
+            .join('&')
+          if (queryString) {
+            fullUrl = `${fullUrl}?${queryString}`
+          }
+          requestData = {}
         }
-        requestData = {}
-      }
-      
-      console.log('发送请求:', {
-        url: fullUrl,
-        method: options.method || 'GET',
-        data: requestData
-      })
-      
-      uni.request({
-        url: fullUrl,
-        method: options.method || 'GET',
-        data: requestData,
-        header: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        success: (res) => {
-          console.log('收到响应:', res)
-          if (res.statusCode === 200) {
-            if (res.data.code === 200) {
-              resolve(res.data)
-            } else if (res.data.code === 401) {
-              uni.removeStorageSync('token')
-              uni.removeStorageSync('userInfo')
-              uni.navigateTo({ url: '/pages/login/login' })
-              reject(res.data)
+
+        uni.request({
+          url: fullUrl,
+          method: options.method || 'GET',
+          data: requestData,
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          success: (res) => {
+            if (res.statusCode === 200) {
+              if (res.data.code === 200) {
+                resolve(res.data)
+              } else if (res.data.code === 401) {
+                reject({ ...res.data, _needRefresh: res.data.subCode === 'TOKEN_EXPIRED' })
+              } else if (res.data.code === 403) {
+                reject(res.data)
+              } else {
+                reject(res.data)
+              }
             } else {
-              // 不自动显示Toast，让调用方处理
-              reject(res.data)
+              uni.showToast({ title: '网络错误', icon: 'none' })
+              reject(res)
             }
-          } else {
-            uni.showToast({ title: '网络错误', icon: 'none' })
-            reject(res)
+          },
+          fail: (err) => {
+            uni.showToast({ title: '网络连接失败', icon: 'none' })
+            reject(err)
+          },
+          complete: () => {
+            if (loadingTimeout) {
+              clearTimeout(loadingTimeout)
+            }
+            if (showLoadingFlag) {
+              triggerLoadingChange(false)
+            }
           }
-        },
-        fail: (err) => {
-          console.error('请求失败:', err)
-          uni.showToast({ title: '网络连接失败', icon: 'none' })
-          reject(err)
-        },
-        complete: () => {
-          // 清除超时定时器
-          if (loadingTimeout) {
-            clearTimeout(loadingTimeout)
-          }
-          // 隐藏加载动画
-          if (showLoadingFlag) {
-            triggerLoadingChange(false)
-          }
-        }
+        })
       })
-    })
+    }
+
+    const token = getAccessToken()
+    const result = await executeRequest(token)
+    return result
   } catch (error) {
-    // 清除超时定时器
     if (loadingTimeout) {
       clearTimeout(loadingTimeout)
     }
-    // 隐藏加载动画
     if (showLoadingFlag) {
       triggerLoadingChange(false)
     }
+
+    if (error && error._needRefresh) {
+      if (!isRefreshing) {
+        isRefreshing = true
+        const newToken = await tryRefreshToken()
+        isRefreshing = false
+
+        if (newToken) {
+          onRefreshed(newToken)
+          return request(options)
+        } else {
+          uni.navigateTo({ url: '/pages/login/login' })
+          throw { code: 401, msg: '请重新登录' }
+        }
+      } else {
+        return new Promise((resolve) => {
+          addRefreshSubscriber(async (newToken) => {
+            resolve(request(options))
+          })
+        })
+      }
+    }
+
     throw error
   }
 }

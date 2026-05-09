@@ -10,7 +10,17 @@ module.exports = {
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'kaoyan-secret-key-2024',
-    expiresIn: '7d'
+    accessExpiresIn: '15m',
+    refreshExpiresIn: '7d',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'kaoyan-refresh-secret-2024'
+  },
+  redis: {
+    enabled: process.env.REDIS_ENABLED !== 'false',
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD || '',
+    db: parseInt(process.env.REDIS_DB || '0'),
+    keyPrefix: process.env.REDIS_KEY_PREFIX || 'kaoyan:'
   },
   upload: {
     maxFileSize: 50 * 1024 * 1024,
@@ -21,5 +31,10 @@ module.exports = {
     appSecret: process.env.WECHAT_APPSECRET || '',
     notificationTemplate: process.env.WECHAT_NOTIFICATION_TEMPLATE || '',
     messageTemplate: process.env.WECHAT_MESSAGE_TEMPLATE || ''
+  },
+  ai: {
+    apiKey: process.env.AI_API_KEY || '',
+    baseUrl: process.env.AI_API_BASE_URL || 'https://api.openai.com/v1',
+    model: process.env.AI_MODEL || 'gpt-3.5-turbo'
   }
 }

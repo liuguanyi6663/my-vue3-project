@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page" v-if="processedPost">
     <!-- 帖子内容 -->
     <view class="card post-detail">
@@ -337,7 +337,7 @@ const showReplyBox = (comment, replyTo) => {
     uni.showToast({ title: '你已被禁言，请联系管理员解决', icon: 'none' })
     return
   }
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -379,7 +379,7 @@ const submitReply = async () => {
 
 const toggleCommentLike = async (comment) => {
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       uni.showToast({ title: '请先登录', icon: 'none' })
       setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -405,7 +405,7 @@ const selectReportReason = (reason) => {
 }
 
 const showReportModal = (comment) => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)

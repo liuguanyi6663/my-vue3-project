@@ -1,4 +1,4 @@
-export function getCurrentUser() {
+﻿export function getCurrentUser() {
   try {
     return JSON.parse(uni.getStorageSync('user') || '{}')
   } catch (e) {
@@ -34,24 +34,41 @@ export function isAdmin() {
 
 export function getToken() {
   try {
-    return uni.getStorageSync('token') || ''
+    return uni.getStorageSync('accessToken') || ''
   } catch (e) {
     return ''
   }
 }
 
-export function setToken(token) {
+export function getRefreshToken() {
   try {
-    uni.setStorageSync('token', token)
+    return uni.getStorageSync('refreshToken') || ''
+  } catch (e) {
+    return ''
+  }
+}
+
+export function setTokens(accessToken, refreshToken) {
+  try {
+    uni.setStorageSync('accessToken', accessToken)
+    uni.setStorageSync('refreshToken', refreshToken)
   } catch (e) {
     console.error('保存token失败:', e)
   }
 }
 
-export function clearToken() {
+export function clearTokens() {
   try {
+    uni.removeStorageSync('accessToken')
+    uni.removeStorageSync('refreshToken')
     uni.removeStorageSync('token')
   } catch (e) {
     console.error('清除token失败:', e)
   }
+}
+
+export function clearAllAuth() {
+  clearTokens()
+  clearCurrentUser()
+  uni.removeStorageSync('userInfo')
 }

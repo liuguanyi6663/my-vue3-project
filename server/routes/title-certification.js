@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 头衔认证
+ *   description: 上岸认证申请与审核
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth, adminAuth } = require('../middleware/auth')

@@ -14,8 +14,8 @@ const initDatabase = async () => {
         password VARCHAR(255),
         nickname VARCHAR(100),
         avatar VARCHAR(500),
-        phone VARCHAR(20),
-        openid VARCHAR(100),
+        phone VARCHAR(20) UNIQUE,
+        openid VARCHAR(100) UNIQUE,
         college VARCHAR(100),
         major VARCHAR(100),
         student_id VARCHAR(50),
@@ -498,6 +498,53 @@ const initDatabase = async () => {
     `)
 
     await seedSchoolWebsites()
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        token VARCHAR(500) NOT NULL,
+        family VARCHAR(100) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        revoked TINYINT DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id),
+        INDEX idx_token (token(255)),
+        INDEX idx_family (family),
+        INDEX idx_expires_at (expires_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        operator_id INT NOT NULL,
+        action VARCHAR(50) NOT NULL,
+        target_type VARCHAR(50) DEFAULT NULL,
+        target_id INT DEFAULT NULL,
+        detail JSON DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_operator (operator_id),
+        INDEX idx_action (action),
+        INDEX idx_target (target_type, target_id),
+        INDEX idx_created_at (created_at),
+        FOREIGN KEY (operator_id) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS ai_conversations (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL COMMENT '用户ID',
+        role ENUM('user', 'assistant') NOT NULL COMMENT '角色',
+        content TEXT NOT NULL COMMENT '消息内容',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id),
+        INDEX idx_user_created (user_id, created_at),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI对话记录表'
+    `)
 
     const userColumns = await db.query('SHOW COLUMNS FROM users')
     const userColNames = userColumns.map(c => c.Field)

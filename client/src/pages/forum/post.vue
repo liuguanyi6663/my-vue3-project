@@ -100,6 +100,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { forumApi } from '@/api/index'
+import { ensureAuthorize } from '@/utils/authorize'
 
 const categories = [
   { label: '备考交流', value: 'study' },
@@ -196,7 +197,11 @@ const chooseImage = async () => {
     return
   }
 
-  // 直接选择图片，不需要提前申请权限
+  // 请求相册权限
+  const authorized = await ensureAuthorize('chooseImage')
+  if (!authorized) return
+
+  // 权限授权成功，选择图片
   uni.chooseImage({
     count: 9 - images.value.length,
     sizeType: ['compressed'],

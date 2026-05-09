@@ -1,12 +1,10 @@
 <template>
   <view class="page">
-    <!-- 页面加载动画 -->
-    <view v-if="showPageLoading" class="page-loading-mask">
-      <view class="loading-spinner"></view>
-    </view>
-    
+    <!-- 骨架屏加载 -->
+    <HomeSkeleton v-if="showSkeleton" />
+
     <!-- 页面内容容器 -->
-    <view class="page-content" :class="{'page-content-visible': pageVisible}">
+    <view v-else class="page-content" :class="{'page-content-visible': pageVisible}">
       <!-- 顶部状态栏 -->
       <view class="status-bar">
         <!-- 背景图片 -->
@@ -46,11 +44,6 @@
               </view>
             </view>
           </swiper-item>
-          <swiper-item v-if="screens.length === 0">
-            <view class="ad-item">
-              <image src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=education%20banner%20for%20postgraduate%20exam%20preparation%2C%20students%20studying%2C%20books%2C%20academic%20atmosphere&image_size=landscape_16_9" mode="aspectFill" class="ad-image"></image>
-            </view>
-          </swiper-item>
         </swiper>
       </view>
 
@@ -77,10 +70,10 @@
             <text class="entry-title">复试工具箱</text>
             <text class="entry-subtitle">面试问题/材料模板</text>
           </view>
-          <view class="entry-item" @click="goToTreehole">
-            <image class="entry-icon" src="/static/匿名树洞.png" mode="aspectFit"></image>
-            <text class="entry-title">匿名树洞</text>
-            <text class="entry-subtitle">倾诉心声/互相鼓励</text>
+          <view class="entry-item" @click="goToAiChat">
+            <image class="entry-icon" src="/static/ai助手.png" mode="aspectFit"></image>
+            <text class="entry-title">AI助手</text>
+            <text class="entry-subtitle">智能解答考研问题</text>
           </view>
           <view class="entry-item" @click="navigateToPage('/pages/tools/score-estimator')">
             <image class="entry-icon" src="/static/成绩估算.jpg" mode="aspectFit"></image>
@@ -233,18 +226,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { homeApi, studyApi, forumApi } from '@/api/index'
 import { getCurrentYear, getKaoyanYear, getKaoyanTargetDate, formatRelativeTime, getTimeSeed } from '@/utils/date'
 import { navigateTo, switchTab } from '@/utils/loading.js'
-import { addRequestLoadingListener, removeRequestLoadingListener } from '@/api/request.js'
+import HomeSkeleton from '@/components/Skeleton/HomeSkeleton.vue'
 
 const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-const showPageLoading = ref(false)
+const showSkeleton = ref(true)
 const pageVisible = ref(false)
 let timer = null
 let timelineTimer = null
-
-// 加载状态监听回调
-function handleLoadingChange(visible) {
-  showPageLoading.value = visible
-}
 
 const experiencePosts = ref([])
 const loading = ref(false)
@@ -254,7 +242,12 @@ const currentYear = ref(getCurrentYear())
 const timelineScrollLeft = ref(0)
 const dailyQuote = ref('进德修业')
 const ads = ref([])
-const screens = ref([])
+// 初始就设置本地图片，避免闪烁
+const screens = ref([
+  { id: 1, name: '', image_url: '/static/first.png' },
+  { id: 2, name: '', image_url: '/static/second.png' },
+  { id: 3, name: '', image_url: '/static/third.png' }
+])
 const notifications = ref([])
 const notificationLoading = ref(false)
 
@@ -289,11 +282,8 @@ const goCheckin = () => {
   navigateTo({ url: '/pages/mine/checkin' })
 }
 
-const goToTreehole = () => {
-  // 先设置全局标记
-  uni.setStorageSync('forumDefaultCategory', 'treehole')
-  // 用switchTab跳转到论坛
-  switchTab({ url: '/pages/forum/index' })
+const goToAiChat = () => {
+  navigateTo({ url: '/pages/mine/ai-chat' })
 }
 
 const getImageUrl = (imageUrl) => {
@@ -302,7 +292,11 @@ const getImageUrl = (imageUrl) => {
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     return imageUrl
   }
-  // 拼接完整的URL
+  // 检查是否是本地static图片（以/static开头）
+  if (imageUrl.startsWith('/static')) {
+    return imageUrl
+  }
+  // 拼接完整的服务器URL
   return 'http://127.0.0.1:3000' + imageUrl
 }
 
@@ -394,47 +388,13 @@ const loadAds = async () => {
 const loadScreens = async () => {
   try {
     const res = await homeApi.getScreens()
-    screens.value = res.data || []
-    // 模拟数据，用于测试
-    if (screens.value.length === 0) {
-      screens.value = [
-        {
-          id: 1,
-          name: '',
-          image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=education%20banner%20for%20postgraduate%20exam%20preparation%2C%20students%20studying%2C%20books%2C%20academic%20atmosphere&image_size=landscape_16_9'
-        },
-        {
-          id: 2,
-          name: '',
-          image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=study%20materials%20banner%2C%20books%2C%20notes%2C%20educational%20supplies&image_size=landscape_16_9'
-        },
-        {
-          id: 3,
-          name: '',
-          image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=interview%20preparation%20banner%2C%20students%20preparing%20for%20exam%2C%20professional%20setting&image_size=landscape_16_9'
-        }
-      ]
+    // 只有当API返回数据时才更新，否则保持本地图片
+    if (res.data && res.data.length > 0) {
+      screens.value = res.data
     }
   } catch (e) {
-    console.error('加载大屏失败:', e)
-    // 使用模拟数据
-    screens.value = [
-      {
-        id: 1,
-        name: '',
-        image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=education%20banner%20for%20postgraduate%20exam%20preparation%2C%20students%20studying%2C%20books%2C%20academic%20atmosphere&image_size=landscape_16_9'
-      },
-      {
-        id: 2,
-        name: '',
-        image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=study%20materials%20banner%2C%20books%2C%20notes%2C%20educational%20supplies&image_size=landscape_16_9'
-      },
-      {
-        id: 3,
-        name: '',
-        image_url: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=interview%20preparation%20banner%2C%20students%20preparing%20for%20exam%2C%20professional%20setting&image_size=landscape_16_9'
-      }
-    ]
+    console.error('加载大屏失败，使用本地图片:', e)
+    // 网络错误时保持使用初始的本地图片，不做额外操作
   }
 }
 
@@ -444,26 +404,26 @@ const loadDailyQuote = async () => {
 }
 
 onMounted(() => {
-  // 添加加载状态监听
-  addRequestLoadingListener(handleLoadingChange)
-  
   updateCountdown()
   syncTimelineWithSystemTime()
-  loadHotPosts()
-  loadDailyQuote()
-  loadAds()
-  loadScreens()
-  loadNotifications()
+
+  Promise.all([
+    loadHotPosts(),
+    loadDailyQuote(),
+    loadAds(),
+    loadScreens(),
+    loadNotifications()
+  ]).finally(() => {
+    showSkeleton.value = false
+    setTimeout(() => {
+      pageVisible.value = true
+    }, 100)
+  })
 
   timer = setInterval(updateCountdown, 1000)
   timelineTimer = setInterval(syncTimelineWithSystemTime, 60 * 1000)
 
   setDailyQuoteRefresh()
-  
-  // 延迟显示页面内容，实现淡入效果
-  setTimeout(() => {
-    pageVisible.value = true
-  }, 100)
 })
 
 const setDailyQuoteRefresh = () => {
@@ -485,9 +445,6 @@ const setDailyQuoteRefresh = () => {
 }
 
 onUnmounted(() => {
-  // 移除加载状态监听
-  removeRequestLoadingListener(handleLoadingChange)
-  
   if (timer) clearInterval(timer)
   if (timelineTimer) clearInterval(timelineTimer)
 })

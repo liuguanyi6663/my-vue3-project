@@ -1,27 +1,28 @@
+const { isRedisAvailable, redisGet, redisSet, redisDelete, redisDeletePattern } = require('../utils/redis')
+
 const cacheStore = new Map()
+
 const CACHE_TTL = {
-  SHORT: 5 * 60 * 1000, // 5分钟
-  MEDIUM: 30 * 60 * 1000, // 30分钟
-  LONG: 2 * 60 * 60 * 1000 // 2小时
+  SHORT: 5 * 60,          // 5分钟 (秒)
+  MEDIUM: 30 * 60,        // 30分钟
+  LONG: 2 * 60 * 60       // 2小时
 }
 
-const cache = {
+const memoryCache = {
   get: (key) => {
     const entry = cacheStore.get(key)
     if (!entry) return null
-
     if (Date.now() > entry.expires) {
       cacheStore.delete(key)
       return null
     }
-
     return entry.data
   },
 
-  set: (key, data, ttl = CACHE_TTL.MEDIUM) => {
+  set: (key, data, ttlSec = CACHE_TTL.MEDIUM) => {
     cacheStore.set(key, {
       data,
-      expires: Date.now() + ttl
+      expires: Date.now() + ttlSec * 1000
     })
   },
 
@@ -42,11 +43,56 @@ const cache = {
     cacheStore.clear()
   },
 
-  stats: () => {
-    return {
-      size: cacheStore.size,
-      keys: Array.from(cacheStore.keys())
+  stats: () => ({
+    size: cacheStore.size,
+    keys: Array.from(cacheStore.keys()),
+    type: 'memory'
+  })
+}
+
+const cache = {
+  get: async (key) => {
+    if (isRedisAvailable()) {
+      const data = await redisGet(key)
+      if (data !== null) return data
     }
+    return memoryCache.get(key)
+  },
+
+  set: async (key, data, ttl = CACHE_TTL.MEDIUM) => {
+    if (isRedisAvailable()) {
+      await redisSet(key, data, ttl)
+    }
+    memoryCache.set(key, data, ttl)
+  },
+
+  delete: async (key) => {
+    if (isRedisAvailable()) {
+      await redisDelete(key)
+    }
+    memoryCache.delete(key)
+  },
+
+  deletePattern: async (pattern) => {
+    if (isRedisAvailable()) {
+      await redisDeletePattern(pattern)
+    }
+    memoryCache.deletePattern(pattern)
+  },
+
+  clear: async () => {
+    if (isRedisAvailable()) {
+      const { redisFlush } = require('../utils/redis')
+      await redisFlush()
+    }
+    memoryCache.clear()
+  },
+
+  stats: () => {
+    if (isRedisAvailable()) {
+      return { type: 'redis', memoryFallback: memoryCache.stats() }
+    }
+    return memoryCache.stats()
   }
 }
 
@@ -57,7 +103,7 @@ const cacheMiddleware = (options = {}) => {
     skipCache = () => false
   } = options
 
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (skipCache(req)) {
       return next()
     }
@@ -67,18 +113,16 @@ const cacheMiddleware = (options = {}) => {
     }
 
     const key = keyGenerator(req)
-    const cached = cache.get(key)
+    const cached = await cache.get(key)
 
     if (cached) {
-      console.log(`✅ 缓存命中: ${key}`)
       return res.json(cached)
     }
 
     const originalJson = res.json
     res.json = function (data) {
-      if (res.statusCode === 200 && data.code === 200) {
+      if (res.statusCode === 200 && data && data.code === 200) {
         cache.set(key, data, ttl)
-        console.log(`💾 已缓存: ${key}`)
       }
       return originalJson.call(this, data)
     }
@@ -87,17 +131,24 @@ const cacheMiddleware = (options = {}) => {
   }
 }
 
-const invalidateCache = (patterns) => {
+const invalidateCache = async (patterns) => {
   if (Array.isArray(patterns)) {
-    patterns.forEach(p => cache.deletePattern(p))
+    for (const p of patterns) {
+      await cache.deletePattern(p)
+    }
   } else {
-    cache.deletePattern(patterns)
+    await cache.deletePattern(patterns)
   }
+}
+
+const clearCache = async () => {
+  await cache.clear()
 }
 
 module.exports = {
   cache,
   cacheMiddleware,
   invalidateCache,
+  clearCache,
   CACHE_TTL
 }

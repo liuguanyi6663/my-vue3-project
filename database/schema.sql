@@ -22,11 +22,27 @@ CREATE TABLE IF NOT EXISTS `users` (
   `delete_request_at` DATETIME DEFAULT NULL COMMENT '注销请求时间',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_openid` (`openid`),
-  INDEX `idx_phone` (`phone`),
+  UNIQUE KEY `uk_openid` (`openid`),
+  UNIQUE KEY `uk_phone` (`phone`),
   INDEX `idx_student_id` (`student_id`),
   INDEX `idx_is_deleting` (`is_deleting`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- JWT刷新令牌表
+CREATE TABLE IF NOT EXISTS `refresh_tokens` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '用户ID',
+  `token` VARCHAR(500) NOT NULL COMMENT '刷新令牌',
+  `family` VARCHAR(100) NOT NULL COMMENT '令牌家族标识，用于轮转检测',
+  `expires_at` DATETIME NOT NULL COMMENT '过期时间',
+  `revoked` TINYINT DEFAULT 0 COMMENT '是否已撤销 1是 0否',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_token` (`token`(255)),
+  INDEX `idx_family` (`family`),
+  INDEX `idx_expires_at` (`expires_at`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='JWT刷新令牌表';
 
 -- 通知公告表
 CREATE TABLE IF NOT EXISTS `notifications` (
@@ -330,6 +346,45 @@ CREATE TABLE IF NOT EXISTS `kaoyan_data` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_year_college` (`year`, `college`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考研数据表';
+
+-- 学生考研信息录入表
+CREATE TABLE IF NOT EXISTS `student_kaoyan_records` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '用户ID',
+  `name` VARCHAR(50) NOT NULL COMMENT '姓名',
+  `major` VARCHAR(100) NOT NULL COMMENT '专业',
+  `student_id` VARCHAR(50) NOT NULL COMMENT '学号',
+  `exam_subjects` VARCHAR(200) NOT NULL COMMENT '考研科目',
+  `college` VARCHAR(100) DEFAULT NULL COMMENT '隶属学院',
+  `is_cross_major` TINYINT DEFAULT 0 COMMENT '是否跨考 1是 0否',
+  `is_admitted` TINYINT DEFAULT 0 COMMENT '是否上岸 1是 0否',
+  `math_score` DECIMAL(5,2) DEFAULT NULL COMMENT '数学成绩',
+  `english_score` DECIMAL(5,2) DEFAULT NULL COMMENT '英语成绩',
+  `politics_score` DECIMAL(5,2) DEFAULT NULL COMMENT '政治成绩',
+  `professional_score` DECIMAL(5,2) DEFAULT NULL COMMENT '专业课成绩',
+  `is_pass_line` TINYINT DEFAULT 0 COMMENT '是否过专业线 1是 0否',
+  `target_school` VARCHAR(200) NOT NULL COMMENT '目标院校',
+  `target_major` VARCHAR(100) DEFAULT NULL COMMENT '目标专业',
+  `school_level` VARCHAR(50) DEFAULT NULL COMMENT '院校层次',
+  `exam_year` YEAR DEFAULT NULL COMMENT '考研年份',
+  `status` ENUM('pending','approved','rejected') DEFAULT 'pending' COMMENT '审核状态',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_student_id` (`student_id`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生考研信息录入表';
+
+-- AI对话记录表
+CREATE TABLE IF NOT EXISTS `ai_conversations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL COMMENT '用户ID',
+  `role` ENUM('user','assistant') NOT NULL COMMENT '角色',
+  `content` TEXT NOT NULL COMMENT '消息内容',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_user_created` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI对话记录表';
 
 
 
@@ -944,3 +999,19 @@ INSERT INTO `school_websites` (`name`, `website`, `type`, `region`, `sort_order`
 ('中国人民大学', 'https://www.ruc.edu.cn', '985', '北京', 8),
 ('中国科学技术大学', 'https://www.ustc.edu.cn', '985', '安徽', 9),
 ('华中科技大学', 'https://www.hust.edu.cn', '985', '湖北', 10);
+
+-- 操作审计日志表
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `operator_id` INT NOT NULL COMMENT '操作人ID',
+  `action` VARCHAR(50) NOT NULL COMMENT '操作类型',
+  `target_type` VARCHAR(50) DEFAULT NULL COMMENT '操作对象类型',
+  `target_id` INT DEFAULT NULL COMMENT '操作对象ID',
+  `detail` JSON DEFAULT NULL COMMENT '操作详情',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_operator` (`operator_id`),
+  INDEX `idx_action` (`action`),
+  INDEX `idx_target` (`target_type`, `target_id`),
+  INDEX `idx_created_at` (`created_at`),
+  FOREIGN KEY (`operator_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作审计日志表';

@@ -1,4 +1,4 @@
-import { get, post, put, del } from './request'
+﻿import { get, post, put, del, BASE_URL } from './request'
 
 export const userApi = {
   login: (data) => post('/user/login', data),
@@ -45,10 +45,10 @@ export const materialApi = {
   getList: (params) => get('/material/list', params),
   getDetail: (id) => get(`/material/detail/${id}`),
   upload: (formData) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://127.0.0.1:3000/api/material/upload',
+        url: `${BASE_URL}/material/upload`,
         filePath: formData.filePath,
         name: 'file',
         header: { 'Authorization': `Bearer ${token}` },
@@ -93,10 +93,10 @@ export const forumApi = {
   getMyPosts: (params) => get('/forum/my-posts', params),
   getUserPosts: (userId, params) => get(`/forum/user-posts/${userId}`, params),
   uploadImage: (filePath) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://127.0.0.1:3000/api/forum/upload-image',
+        url: `${BASE_URL}/forum/upload-image`,
         filePath: filePath,
         name: 'image',
         header: { 'Authorization': `Bearer ${token}` },
@@ -157,8 +157,7 @@ export const adminApi = {
   getInterviewAuditStats: () => get('/admin/interview-audit/stats'),
   auditInterviewItem: (type, id, data) => put(`/admin/interview-audit/${type}/${id}`, data),
   exportKaoyanData: (sortType) => {
-    const token = uni.getStorageSync('token')
-    const BASE_URL = 'http://127.0.0.1:3000/api'
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.downloadFile({
         url: `${BASE_URL}/admin/kaoyan-export?sort=${sortType}`,
@@ -231,10 +230,10 @@ export const interviewApi = {
   deleteOralQuestion: (id) => del(`/interview/oral-questions/${id}`),
   getResumeTemplates: () => get('/interview/resume-templates'),
   uploadResumeTemplate: (filePath, formData) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://127.0.0.1:3000/api/interview/resume-templates',
+        url: `${BASE_URL}/interview/resume-templates`,
         filePath: filePath,
         name: 'file',
         header: { 'Authorization': `Bearer ${token}` },
@@ -259,10 +258,10 @@ export const interviewApi = {
   downloadResumeTemplate: (id) => get(`/interview/resume-templates/${id}/download`),
   getEmailTemplates: () => get('/interview/email-templates'),
   uploadEmailTemplate: (filePath, formData) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://127.0.0.1:3000/api/interview/email-templates',
+        url: `${BASE_URL}/interview/email-templates`,
         filePath: filePath,
         name: 'file',
         header: { 'Authorization': `Bearer ${token}` },
@@ -303,10 +302,10 @@ export const scoreEstimatorApi = {
 
 export const titleCertApi = {
   apply: (filePath, formData) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://127.0.0.1:3000/api/title-certification/apply',
+        url: `${BASE_URL}/title-certification/apply`,
         filePath: filePath,
         name: 'screenshot',
         header: { 'Authorization': `Bearer ${token}` },
@@ -343,4 +342,10 @@ export const schoolWebsitesApi = {
   create: (data) => post('/school-websites/admin/create', data),
   update: (id, data) => put(`/school-websites/admin/${id}`, data),
   delete: (id) => del(`/school-websites/admin/${id}`)
+}
+
+export const aiApi = {
+  chat: (data) => post('/ai/chat', data),
+  getHistory: () => get('/ai/history'),
+  clearHistory: () => del('/ai/history')
 }

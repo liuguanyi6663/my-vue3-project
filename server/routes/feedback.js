@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 意见反馈
+ *   description: 用户反馈提交与处理
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth, adminAuth } = require('../middleware/auth')

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="section card">
       <text class="section-title">提交意见反馈</text>
@@ -97,7 +97,7 @@ const submitFeedback = async () => {
     return uni.showToast({ title: '请输入反馈内容', icon: 'none' })
   }
 
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     return uni.navigateTo({ url: '/pages/login/login' })
   }
@@ -114,7 +114,7 @@ const submitFeedback = async () => {
 }
 
 const loadMyFeedbacks = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) return
 
   loading.value = true

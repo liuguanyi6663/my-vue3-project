@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <!-- 切换标签 -->
     <view class="tab-bar card">
@@ -82,7 +82,7 @@ const loading = ref(false)
 const loadMaterials = async () => {
   loading.value = true
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       materialList.value = []
       return
@@ -104,7 +104,7 @@ const loadMaterials = async () => {
 const loadPosts = async () => {
   loading.value = true
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       postList.value = []
       return

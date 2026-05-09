@@ -1,28 +1,39 @@
 const SCOPE_MAP = {
-  userLocation: 'scope.userLocation',
   camera: 'scope.camera',
-  album: 'scope.writePhotosAlbum',
   writePhotosAlbum: 'scope.writePhotosAlbum',
-  record: 'scope.record'
+  record: 'scope.record',
+  userLocation: 'scope.userLocation',
+  userFuzzyLocation: 'scope.userFuzzyLocation',
+  chooseImage: null,
+  chooseMessageFile: null
 }
 
 const SCOPE_TIPS = {
-  'scope.userLocation': '需要获取您的位置信息',
   'scope.camera': '需要使用您的摄像头进行拍照',
   'scope.writePhotosAlbum': '需要保存图片到您的相册',
-  'scope.record': '需要使用录音功能'
+  'scope.record': '需要使用录音功能',
+  'scope.userLocation': '需要获取您的位置信息',
+  'scope.userFuzzyLocation': '需要获取您的模糊位置信息'
 }
 
 function getScopeKey(scope) {
-  return SCOPE_MAP[scope] || scope
+  if (SCOPE_MAP.hasOwnProperty(scope)) {
+    return SCOPE_MAP[scope]
+  }
+  return scope
 }
 
 function getScopeTip(scope) {
-  return SCOPE_TIPS[getScopeKey(scope)] || '需要获取相关权限'
+  return SCOPE_TIPS[scope] || '需要获取相关权限'
 }
 
 export function checkAuthorize(scope) {
   const scopeKey = getScopeKey(scope)
+
+  if (scopeKey === null) {
+    return Promise.resolve({ authorized: true, denied: false, noScope: true })
+  }
+
   return new Promise((resolve) => {
     uni.getSetting({
       success: (res) => {
@@ -45,6 +56,11 @@ export function checkAuthorize(scope) {
 
 export function requestAuthorize(scope) {
   const scopeKey = getScopeKey(scope)
+
+  if (scopeKey === null) {
+    return Promise.resolve(true)
+  }
+
   return new Promise((resolve) => {
     uni.authorize({
       scope: scopeKey,
@@ -67,6 +83,11 @@ export function openAuthorizeSetting() {
 
 export async function ensureAuthorize(scope) {
   const scopeKey = getScopeKey(scope)
+
+  if (scopeKey === null) {
+    return true
+  }
+
   const { authorized, denied } = await checkAuthorize(scope)
 
   if (authorized) {
@@ -74,7 +95,7 @@ export async function ensureAuthorize(scope) {
   }
 
   if (!denied) {
-    const granted = await requestAuthorize(scopeKey)
+    const granted = await requestAuthorize(scope)
     if (granted) return true
   }
 
@@ -98,6 +119,7 @@ export async function ensureAuthorize(scope) {
 }
 
 export function showAuthTip(scope) {
-  const tip = getScopeTip(getScopeKey(scope))
+  const scopeKey = getScopeKey(scope)
+  const tip = getScopeTip(scopeKey)
   uni.showToast({ title: `未授权：${tip}`, icon: 'none' })
 }

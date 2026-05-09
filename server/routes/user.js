@@ -1,14 +1,185 @@
 const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 const { v4: uuidv4 } = require('uuid')
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const config = require('../config/index')
-const { auth } = require('../middleware/auth')
+const { auth, optionalAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 const weixin = require('../utils/wechat')
 
+/**
+ * @swagger
+ * tags:
+ *   name: 用户模块
+ *   description: 用户登录、注册、资料管理
+ *
+ * components:
+ *   schemas:
+ *     UserInfo:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         nickname:
+ *           type: string
+ *           example: 张三
+ *         avatar:
+ *           type: string
+ *           example: https://example.com/avatar.png
+ *         student_id:
+ *           type: string
+ *           example: "20210001"
+ *         college:
+ *           type: string
+ *           example: 计算机学院
+ *         major:
+ *           type: string
+ *           example: 软件工程
+ *         target_school:
+ *           type: string
+ *           example: 清华大学
+ *         target_major:
+ *           type: string
+ *           example: 计算机科学与技术
+ *         exam_year:
+ *           type: string
+ *           example: "2026"
+ *         role:
+ *           type: string
+ *           enum: [student, admin, super_admin]
+ *         status:
+ *           type: integer
+ *           example: 1
+ */
+
+const REFRESH_TOKEN_BYTES = 48
+
+function generateRefreshToken() {
+  return crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex')
+}
+
+function generateTokenFamily() {
+  return crypto.randomBytes(16).toString('hex')
+}
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex')
+}
+
+async function issueTokens(userId) {
+  const accessToken = jwt.sign(
+    { userId },
+    config.jwt.secret,
+    { expiresIn: config.jwt.accessExpiresIn }
+  )
+
+  const refreshToken = generateRefreshToken()
+  const family = generateTokenFamily()
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+  await db.query(
+    'INSERT INTO refresh_tokens (user_id, token, family, expires_at) VALUES (?, ?, ?, ?)',
+    [userId, refreshToken, family, expiresAt]
+  )
+
+  return { accessToken, refreshToken, expiresIn: 15 * 60 }
+}
+
+async function rotateRefreshToken(oldRefreshToken) {
+  const rows = await db.query(
+    'SELECT * FROM refresh_tokens WHERE token = ? AND revoked = 0',
+    [oldRefreshToken]
+  )
+
+  if (rows.length === 0) {
+    return null
+  }
+
+  const existing = rows[0]
+
+  if (new Date(existing.expires_at) < new Date()) {
+    await db.query('UPDATE refresh_tokens SET revoked = 1 WHERE family = ?', [existing.family])
+    return null
+  }
+
+  await db.query('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?', [existing.id])
+
+  const newRefreshToken = generateRefreshToken()
+  const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+  await db.query(
+    'INSERT INTO refresh_tokens (user_id, token, family, expires_at) VALUES (?, ?, ?, ?)',
+    [existing.user_id, newRefreshToken, existing.family, newExpiresAt]
+  )
+
+  const accessToken = jwt.sign(
+    { userId: existing.user_id },
+    config.jwt.secret,
+    { expiresIn: config.jwt.accessExpiresIn }
+  )
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+    expiresIn: 15 * 60,
+    userId: existing.user_id
+  }
+}
+
+/**
+ * @swagger
+ * /api/user/login:
+ *   post:
+ *     tags: [用户模块]
+ *     summary: 用户登录
+ *     description: 支持微信授权登录和手机号登录，返回 access_token 和 refresh_token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: 微信登录 code
+ *               phone:
+ *                 type: string
+ *                 description: 手机号（开发模式快速登录）
+ *               avatar:
+ *                 type: string
+ *                 description: 头像URL
+ *               nickname:
+ *                 type: string
+ *                 description: 昵称
+ *     responses:
+ *       200:
+ *         description: 登录成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *                     expiresIn:
+ *                       type: integer
+ *                       example: 900
+ *                     userInfo:
+ *                       $ref: '#/components/schemas/UserInfo'
+ */
 router.post('/login', async (req, res) => {
   try {
     const { code, phone, username, password, nickname, avatar, openid, encryptedPhoneCode } = req.body
@@ -24,15 +195,76 @@ router.post('/login', async (req, res) => {
     
     let user
     if (username && password) {
-      // 用户名密码登录（仅用于测试）
-      const users = await db.query('SELECT * FROM users WHERE nickname = ?', [username])
+      const users = await db.query('SELECT * FROM users WHERE username = ?', [username])
       if (users.length > 0) {
-        user = users[0]
+        const foundUser = users[0]
+        if (foundUser.password !== hashPassword(password)) {
+          return res.json(error('密码错误'))
+        }
+        user = foundUser
       } else {
         return res.json(error('用户不存在'))
       }
     } else if (finalPhone) {
+      // 手机号登录（优先级最高，因为手机号是唯一标识）
       const users = await db.query('SELECT * FROM users WHERE phone = ?', [finalPhone])
+      if (users.length > 0) {
+        user = users[0]
+        // 如果传入了新的昵称、头像或 openid，更新用户信息
+        const updateData = {}
+        if (nickname) updateData.nickname = nickname
+        if (avatar) updateData.avatar = avatar
+        if (openid && !user.openid) updateData.openid = openid
+        if (Object.keys(updateData).length > 0) {
+          const setClauses = Object.keys(updateData).map(key => `${key} = ?`).join(', ')
+          const values = Object.values(updateData)
+          await db.query(`UPDATE users SET ${setClauses} WHERE id = ?`, [...values, user.id])
+          Object.assign(user, updateData)
+        }
+      } else {
+        // 手机号未匹配，检查openid是否匹配已有用户（防止跨设备创建重复账号）
+        let openidMatched = false
+        if (openid) {
+          const openidUsers = await db.query('SELECT * FROM users WHERE openid = ?', [openid])
+          if (openidUsers.length > 0) {
+            user = openidUsers[0]
+            openidMatched = true
+            await db.query('UPDATE users SET phone = ? WHERE id = ?', [finalPhone, user.id])
+            user.phone = finalPhone
+            const updateData = {}
+            if (nickname) updateData.nickname = nickname
+            if (avatar) updateData.avatar = avatar
+            if (Object.keys(updateData).length > 0) {
+              const setClauses = Object.keys(updateData).map(key => `${key} = ?`).join(', ')
+              const values = Object.values(updateData)
+              await db.query(`UPDATE users SET ${setClauses} WHERE id = ?`, [...values, user.id])
+              Object.assign(user, updateData)
+            }
+          }
+        }
+        if (!openidMatched) {
+          const result = await db.query(
+            'INSERT INTO users (phone, nickname, avatar, openid) VALUES (?, ?, ?, ?)',
+            [finalPhone, nickname || '用户' + finalPhone.slice(-4), avatar || null, openid || null]
+          )
+          user = {
+            id: result.insertId,
+            phone: finalPhone,
+            nickname: nickname || '用户' + finalPhone.slice(-4),
+            avatar,
+            openid: openid || null,
+            role: 'student',
+            status: 1
+          }
+        }
+      }
+    } else {
+      // 微信登录（无手机号时）
+      const finalOpenid = openid || 'wx_' + uuidv4().slice(0, 8)
+      
+      // 先按 openid 查询
+      let users = await db.query('SELECT * FROM users WHERE openid = ?', [finalOpenid])
+      
       if (users.length > 0) {
         user = users[0]
         // 如果传入了新的昵称或头像，更新用户信息
@@ -48,58 +280,41 @@ router.post('/login', async (req, res) => {
           }
         }
       } else {
-        const result = await db.query(
-          'INSERT INTO users (phone, nickname, avatar) VALUES (?, ?, ?)',
-          [finalPhone, nickname || '用户' + finalPhone.slice(-4), avatar || null]
-        )
-        user = { 
-          id: result.insertId, 
-          phone: finalPhone, 
-          nickname: nickname || '用户' + finalPhone.slice(-4), 
-          avatar, 
-          role: 'student', 
-          status: 1 
-        }
-      }
-    } else {
-      // 微信登录
-      const finalOpenid = openid || 'wx_' + uuidv4().slice(0, 8)
-      const users = await db.query('SELECT * FROM users WHERE openid = ?', [finalOpenid])
-      
-      // 如果有加密手机号，可以在这里调用微信接口获取真实手机号
-      let decryptedPhone = null
-      
-      // 这里需要调用微信接口获取手机号，由于需要配置 appid 和 secret，暂时留空
-      // 实际项目需要在这里调用 weixin.phonenumber.getPhoneNumber 接口
-      
-      if (users.length > 0) {
-        user = users[0]
-        // 如果传入了新的昵称、头像或手机号，更新用户信息
-        if (nickname || avatar || decryptedPhone) {
-          const updateData = {}
-          if (nickname) updateData.nickname = nickname
-          if (avatar) updateData.avatar = avatar
-          if (decryptedPhone) updateData.phone = decryptedPhone
-          if (Object.keys(updateData).length > 0) {
-            const setClauses = Object.keys(updateData).map(key => `${key} = ?`).join(', ')
-            const values = Object.values(updateData)
-            await db.query(`UPDATE users SET ${setClauses} WHERE id = ?`, [...values, user.id])
-            Object.assign(user, updateData)
+        // 没有找到 openid，检查手机号是否匹配已有用户（防止跨设备创建重复账号）
+        let phoneMatched = false
+        if (phone) {
+          const phoneUsers = await db.query('SELECT * FROM users WHERE phone = ?', [phone])
+          if (phoneUsers.length > 0) {
+            user = phoneUsers[0]
+            phoneMatched = true
+            await db.query('UPDATE users SET openid = ? WHERE id = ?', [finalOpenid, user.id])
+            user.openid = finalOpenid
+            if (nickname || avatar) {
+              const updateData = {}
+              if (nickname) updateData.nickname = nickname
+              if (avatar) updateData.avatar = avatar
+              if (Object.keys(updateData).length > 0) {
+                const setClauses = Object.keys(updateData).map(key => `${key} = ?`).join(', ')
+                const values = Object.values(updateData)
+                await db.query(`UPDATE users SET ${setClauses} WHERE id = ?`, [...values, user.id])
+                Object.assign(user, updateData)
+              }
+            }
           }
         }
-      } else {
-        const result = await db.query(
-          'INSERT INTO users (openid, nickname, avatar, phone) VALUES (?, ?, ?, ?)',
-          [finalOpenid, nickname || '微信用户', avatar || null, decryptedPhone || null]
-        )
-        user = { 
-          id: result.insertId, 
-          openid: finalOpenid, 
-          nickname: nickname || '微信用户', 
-          avatar, 
-          phone: decryptedPhone, 
-          role: 'student', 
-          status: 1 
+        if (!phoneMatched) {
+          const result = await db.query(
+            'INSERT INTO users (openid, nickname, avatar) VALUES (?, ?, ?)',
+            [finalOpenid, nickname || '微信用户', avatar || null]
+          )
+          user = {
+            id: result.insertId,
+            openid: finalOpenid,
+            nickname: nickname || '微信用户',
+            avatar,
+            role: 'student',
+            status: 1
+          }
         }
       }
     }
@@ -118,10 +333,12 @@ router.post('/login', async (req, res) => {
       user.delete_request_at = null
     }
     
-    const token = jwt.sign({ userId: user.id }, config.jwt.secret, { expiresIn: config.jwt.expiresIn })
-    
+    const tokenData = await issueTokens(user.id)
+
     res.json(success({
-      token,
+      accessToken: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      expiresIn: tokenData.expiresIn,
       userInfo: {
         id: user.id,
         nickname: user.nickname,
@@ -340,6 +557,80 @@ router.post('/wechat/phone', async (req, res) => {
   } catch (err) {
     console.error(err)
     res.json(error('获取手机号失败: ' + (err.message || '未知错误')))
+  }
+})
+
+/**
+ * @swagger
+ * /api/user/refresh:
+ *   post:
+ *     tags: [用户模块]
+ *     summary: 刷新 access_token
+ *     description: 使用 refresh_token 获取新的 access_token，旧 token 将被轮转
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: 刷新令牌
+ *     responses:
+ *       200:
+ *         description: 刷新成功
+ *       401:
+ *         description: refresh_token 无效或已过期
+ */
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body
+    if (!refreshToken) {
+      return res.json({ code: 401, msg: '缺少refresh_token', data: null, subCode: 'NO_REFRESH_TOKEN' })
+    }
+
+    const result = await rotateRefreshToken(refreshToken)
+    if (!result) {
+      return res.json({ code: 401, msg: 'refresh_token无效或已过期，请重新登录', data: null, subCode: 'REFRESH_INVALID' })
+    }
+
+    res.json(success({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn
+    }, '令牌刷新成功'))
+  } catch (err) {
+    console.error('刷新token失败:', err)
+    res.json(error('刷新token失败'))
+  }
+})
+
+/**
+ * @swagger
+ * /api/user/logout:
+ *   post:
+ *     tags: [用户模块]
+ *     summary: 登出
+ *     description: 撤销当前用户的所有 refresh_token
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 登出成功
+ */
+router.post('/logout', auth, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0',
+      [req.user.id]
+    )
+    res.json(success(null, '已登出'))
+  } catch (err) {
+    console.error('登出失败:', err)
+    res.json(error('登出失败'))
   }
 })
 

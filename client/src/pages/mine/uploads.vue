@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <scroll-view scroll-x class="filter-scroll">
       <view class="filter-list">
@@ -193,7 +193,7 @@ const sortUploads = (list) => {
 const loadUploads = async () => {
   loading.value = true
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       uploadList.value = []
       return
@@ -257,7 +257,7 @@ const goMaterialDetail = (item) => {
 }
 
 const downloadUpload = (item) => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.navigateTo({ url: '/pages/login/login' })
     return

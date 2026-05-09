@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 学习打卡
+ *   description: 学习计划、打卡记录、统计看板、计划模板
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { auth } = require('../middleware/auth')

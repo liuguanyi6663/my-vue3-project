@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page" v-if="userInfo">
     <view class="profile-header">
       <image class="profile-avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill" />
@@ -180,7 +180,7 @@ const loadUserPosts = async (isRefresh = false) => {
 }
 
 const sendMessage = () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)

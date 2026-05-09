@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 国家线
+ *   description: 国家线查询、多维度筛选、后台管理
+ */
 const https = require('https')
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')

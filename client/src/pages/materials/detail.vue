@@ -1,4 +1,4 @@
-<template>
+﻿﻿﻿﻿<template>
   <view class="page" v-if="detail">
     <view class="card detail-header">
       <text class="detail-title">{{ detail.title }}</text>
@@ -299,12 +299,13 @@ const downloadMaterial = async () => {
   try {
     uni.showLoading({ title: '准备下载...' })
 
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       uni.hideLoading()
       return uni.navigateTo({ url: '/pages/login/login' })
     }
 
+    // 如果是图片，先检查保存到相册的权限
     if (isImageFile(detail.value.file_path)) {
       const authorized = await ensureAuthorize('writePhotosAlbum')
       if (!authorized) {
@@ -313,12 +314,16 @@ const downloadMaterial = async () => {
       }
     }
 
-    uni.downloadFile({
+    // 下载文件
+    const downloadOptions = {
       url: `http://127.0.0.1:3000/api/material/download/${detail.value.id}`,
       header: { 'Authorization': `Bearer ${token}` },
       success: (res) => {
+        uni.hideLoading()
+        
         if (res.statusCode === 200) {
           if (isImageFile(detail.value.file_path)) {
+            // 图片直接保存到相册
             uni.saveImageToPhotosAlbum({
               filePath: res.tempFilePath,
               success: () => {
@@ -332,32 +337,62 @@ const downloadMaterial = async () => {
               }
             })
           } else {
-            const docType = getDocFileType(detail.value.file_path)
-            if (docType) {
-              uni.openDocument({
-                filePath: res.tempFilePath,
-                fileType: docType,
-                showMenu: true,
-                success: () => {
-                  uni.showToast({ title: '下载成功', icon: 'success' })
-                },
-                fail: (err) => {
-                  console.error('打开文档失败:', err)
-                  uni.showToast({ title: '文件打开失败，请重试', icon: 'none' })
+            // 文档：给用户选择
+            uni.showActionSheet({
+              itemList: ['打开文档', '转发给朋友'],
+              success: (actionRes) => {
+                if (actionRes.tapIndex === 0) {
+                  // 打开文档
+                  const docType = getDocFileType(detail.value.file_path)
+                  if (docType) {
+                    uni.openDocument({
+                      filePath: res.tempFilePath || res.filePath,
+                      fileType: docType,
+                      showMenu: true,
+                      success: () => {
+                        uni.showToast({ 
+                          title: '打开成功，点击右上角菜单可保存', 
+                          icon: 'none',
+                          duration: 2000
+                        })
+                      },
+                      fail: (err) => {
+                        console.error('打开文档失败:', err)
+                        uni.showToast({ title: '文件打开失败，请重试', icon: 'none' })
+                      }
+                    })
+                  } else {
+                    uni.openDocument({
+                      filePath: res.tempFilePath || res.filePath,
+                      showMenu: true,
+                      success: () => {
+                        uni.showToast({ 
+                          title: '打开成功，点击右上角菜单可保存', 
+                          icon: 'none',
+                          duration: 2000
+                        })
+                      },
+                      fail: () => {
+                        uni.showToast({ title: '该文件类型暂不支持打开', icon: 'none' })
+                      }
+                    })
+                  }
+                } else if (actionRes.tapIndex === 1) {
+                  // 转发给朋友
+                  uni.shareFileMessage({
+                    filePath: res.tempFilePath || res.filePath,
+                    fileName: detail.value.file_name,
+                    success: () => {
+                      uni.showToast({ title: '转发成功', icon: 'success' })
+                    },
+                    fail: (err) => {
+                      console.error('转发失败:', err)
+                      uni.showToast({ title: '转发失败，请重试', icon: 'none' })
+                    }
+                  })
                 }
-              })
-            } else {
-              uni.openDocument({
-                filePath: res.tempFilePath,
-                showMenu: true,
-                success: () => {
-                  uni.showToast({ title: '下载成功', icon: 'success' })
-                },
-                fail: () => {
-                  uni.showToast({ title: '该文件类型暂不支持打开', icon: 'none' })
-                }
-              })
-            }
+              }
+            })
           }
         } else if (res.statusCode === 404) {
           uni.showToast({ title: '文件不存在', icon: 'none' })
@@ -366,13 +401,22 @@ const downloadMaterial = async () => {
         }
       },
       fail: (err) => {
+        uni.hideLoading()
         console.error('下载失败:', err)
         uni.showToast({ title: '下载失败，请检查网络', icon: 'none' })
-      },
-      complete: () => {
-        uni.hideLoading()
       }
-    })
+    }
+
+    // #ifdef MP-WEIXIN
+    // 微信小程序：使用 filePath 参数保留文件名和后缀
+    if (detail.value.file_name) {
+      const ext = detail.value.file_name.split('.').pop()
+      const fileName = `material_${Date.now()}.${ext}`
+      downloadOptions.filePath = `${wx.env.USER_DATA_PATH}/${fileName}`
+    }
+    // #endif
+
+    uni.downloadFile(downloadOptions)
   } catch (e) {
     uni.hideLoading()
     console.error(e)
@@ -382,7 +426,7 @@ const downloadMaterial = async () => {
 
 const toggleFavorite = async () => {
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       uni.showToast({ title: '请先登录', icon: 'none' })
       setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -415,7 +459,7 @@ const toggleLike = async () => {
 }
 
 const previewFile = () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   const filePath = detail.value.file_path
   
   if (isImageFile(filePath)) {
@@ -491,7 +535,7 @@ const submitReview = async () => {
 }
 
 const showReplyBox = (review, replyTo) => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -535,14 +579,11 @@ const formatTime = (timeStr) => formatDateUtil(timeStr)
 
 const goUserProfile = (userId) => {
   if (!userId) return
-  const currentUserId = uni.getStorageSync('userInfo')
-  try {
-    const parsed = JSON.parse(currentUserId)
-    if (parsed && parsed.id === userId) {
-      uni.navigateTo({ url: '/pages/mine/profile' })
-      return
-    }
-  } catch (e) {}
+  const userInfo = uni.getStorageSync('userInfo')
+  if (userInfo && userInfo.id === userId) {
+    uni.navigateTo({ url: '/pages/mine/profile' })
+    return
+  }
   uni.navigateTo({ url: `/pages/mine/user-profile?userId=${userId}` })
 }
 
@@ -568,7 +609,7 @@ const canDeleteReview = (review) => {
 
 const toggleReviewLike = async (review) => {
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       uni.showToast({ title: '请先登录', icon: 'none' })
       setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -597,7 +638,7 @@ const selectReportReason = (reason) => {
 
 const showReportModal = (review) => {
   console.log('showReportModal called with:', review)
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => { uni.navigateTo({ url: '/pages/login/login' }) }, 1000)
@@ -1119,12 +1160,6 @@ onMounted(() => {
 .reason-item:active {
   transform: scale(0.95);
   background: #f0f0f0;
-}
-
-.reason-item.active {
-  border-color: #ff3b30;
-  color: #ff3b30;
-  background: #fff0f0;
 }
 
 .report-desc {

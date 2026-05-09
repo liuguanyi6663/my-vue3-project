@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 复试工具箱
+ *   description: 英语口语题库、简历模板、邮件模板
+ */
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth, adminAuth } = require('../middleware/auth')

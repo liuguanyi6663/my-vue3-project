@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <!-- 用户信息卡片 -->
     <view class="user-card">
@@ -78,6 +78,15 @@
 
       <view class="menu-group">
         <text class="group-title">工具</text>
+        
+        <view class="menu-item" @click="goPage('/pages/mine/ai-chat')">
+          <text class="menu-icon">🤖</text>
+          <text class="menu-label">AI考研助手</text>
+          <view class="ai-badge">
+            <text class="ai-badge-text">AI</text>
+          </view>
+          <text class="menu-arrow">></text>
+        </view>
         
         <view class="menu-item" @click="goPage('/pages/data/dashboard')">
           <text class="menu-icon">📊</text>
@@ -193,7 +202,7 @@ const unreadCount = ref(0)
 const hasPendingCert = ref(false)
 
 const loadUserInfo = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     userInfo.value = null
     return
@@ -208,7 +217,7 @@ const loadUserInfo = async () => {
 }
 
 const loadStats = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     stats.value = {}
     favoriteCount.value = 0
@@ -293,7 +302,7 @@ const logout = () => {
     content: '确定要退出登录吗？',
     success: (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('token')
+        uni.removeStorageSync('accessToken')
         uni.removeStorageSync('userInfo')
         userInfo.value = null
         stats.value = {}
@@ -305,7 +314,7 @@ const logout = () => {
 }
 
 const loadDeleteStatus = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     deleteStatus.value = { is_deleting: false, days_left: 0 }
     return
@@ -380,7 +389,7 @@ const deleteAccount = () => {
 }
 
 const loadUnreadCount = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     unreadCount.value = 0
     return
@@ -396,7 +405,7 @@ const loadUnreadCount = async () => {
 }
 
 const loadCertStatus = async () => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     hasPendingCert.value = false
     return
@@ -591,6 +600,19 @@ onShow(() => {
 .badge-text {
   font-size: 20rpx;
   color: #fff;
+}
+
+.ai-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  margin-right: 12rpx;
+}
+
+.ai-badge-text {
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: bold;
 }
 
 .logout-text {

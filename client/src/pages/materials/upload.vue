@@ -179,7 +179,7 @@ const chooseFile = () => {
 }
 
 const chooseImageFallback = async () => {
-  const authorized = await ensureAuthorize('album')
+  const authorized = await ensureAuthorize('chooseImage')
   if (!authorized) return
 
   uni.chooseImage({

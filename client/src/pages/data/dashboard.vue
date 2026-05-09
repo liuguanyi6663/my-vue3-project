@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <!-- 顶部操作栏 -->
     <view class="top-actions">
@@ -404,7 +404,7 @@ const loadData = async () => {
 
 const checkMyRecord = async () => {
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       hasRecord.value = false
       return

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="tool-grid">
       <view 
@@ -454,7 +454,7 @@ const downloadTemplate = (tpl) => {
   }
   
   const url = `http://127.0.0.1:3000/api/interview/resume-templates/${tpl.id}/download`
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   
   uni.showLoading({ title: '下载中...' })
   uni.downloadFile({
@@ -594,7 +594,7 @@ const uploadEmailDoc = () => {
 
 const downloadEmailTemplate = (tpl) => {
   const url = `http://127.0.0.1:3000/api/interview/email-templates/${tpl.id}/download`
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
 
   uni.showLoading({ title: '下载中...' })
   uni.downloadFile({

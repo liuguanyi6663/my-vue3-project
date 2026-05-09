@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <view class="screen-page">
     <view class="screen-header">
       <text class="screen-title">大屏管理</text>
@@ -79,7 +79,7 @@ const loadScreens = async () => {
 }
 
 const chooseImage = async () => {
-  const authorized = await ensureAuthorize('album')
+  const authorized = await ensureAuthorize('chooseImage')
   if (!authorized) return
 
   uni.chooseImage({
@@ -97,7 +97,7 @@ const uploadImageFile = (filePath) => {
   loading.value = true
   message.value = ''
   
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   console.log('上传文件路径:', filePath)
   console.log('Token:', token)
   

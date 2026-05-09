@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 成绩估算
+ *   description: 成绩与国家线对比分析
+ */
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth } = require('../middleware/auth')

@@ -1,0 +1,5 @@
+export { default as SkeletonItem } from './SkeletonItem.vue'
+export { default as HomeSkeleton } from './HomeSkeleton.vue'
+export { default as MaterialSkeleton } from './MaterialSkeleton.vue'
+export { default as ForumSkeleton } from './ForumSkeleton.vue'
+export { default as ListSkeleton } from './ListSkeleton.vue'

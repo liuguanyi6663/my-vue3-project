@@ -88,7 +88,8 @@ const completeLogin = async (loginParams) => {
   try {
     const res = await userApi.login(loginParams)
     
-    uni.setStorageSync('token', res.data.token)
+    uni.setStorageSync('accessToken', res.data.accessToken)
+    uni.setStorageSync('refreshToken', res.data.refreshToken)
     uni.setStorageSync('userInfo', res.data.userInfo)
     uni.setStorageSync('user', res.data.userInfo)
     
@@ -141,35 +142,10 @@ const handleGetPhoneNumber = async (e) => {
       const phoneRes = await userApi.wechatPhone(e.detail.code)
       const phoneNumber = phoneRes.data.phone_number
 
-      // 4. 尝试获取用户昵称头像
-      let userInfoData = {}
-      try {
-        const profileRes = await new Promise((resolve, reject) => {
-          uni.getUserProfile({
-            desc: '用于完善用户资料',
-            success: resolve,
-            fail: (err) => {
-              console.log('获取用户信息失败，将使用默认值:', err)
-              resolve(null)
-            }
-          })
-        })
-        
-        if (profileRes && profileRes.userInfo) {
-          userInfoData = {
-            nickname: profileRes.userInfo.nickName,
-            avatar: profileRes.userInfo.avatarUrl
-          }
-        }
-      } catch (e) {
-        console.log('跳过获取用户信息:', e)
-      }
-
-      // 5. 调用登录接口
+      // 4. 调用登录接口（昵称头像可在个人中心后续完善）
       await completeLogin({
         openid: wechatData.value.openid,
-        phone: phoneNumber,
-        ...userInfoData
+        phone: phoneNumber
       })
 
     } catch (err) {

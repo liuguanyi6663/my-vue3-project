@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 管理后台
+ *   description: 用户管理、内容审核、数据管理、系统配置、审计日志
+ */
 const db = require('../utils/db')
 const { success, error, pageSuccess } = require('../utils/response')
 const { adminAuth, superAdminAuth } = require('../middleware/auth')
@@ -7,6 +13,7 @@ const upload = require('../middleware/upload')
 const { getCurrentYear } = require('../utils/date')
 const ExcelJS = require('exceljs')
 const wechat = require('../utils/wechat')
+const { writeLog, queryLogs, ACTION_TYPES } = require('../utils/audit')
 
 router.get('/users', adminAuth, async (req, res) => {
   try {
@@ -146,6 +153,8 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
 
     await db.query('DELETE FROM users WHERE id=?', [userId])
 
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.USER_DELETE, targetType: 'user', targetId: parseInt(userId), detail: { deleted_user_id: userId } })
+
     res.json(success(null, '删除成功'))
   } catch (err) {
     console.error('删除用户失败:', err)
@@ -186,6 +195,16 @@ router.put('/users/:id/status', adminAuth, async (req, res) => {
       'UPDATE users SET status=COALESCE(?,status), is_banned=COALESCE(?,is_banned), role=COALESCE(?,role) WHERE id=?',
       [status, is_banned, role, req.params.id]
     )
+
+    if (is_banned === 1) {
+      await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.USER_BAN, targetType: 'user', targetId: parseInt(req.params.id), detail: { banned: true } })
+    } else if (is_banned === 0) {
+      await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.USER_UNBAN, targetType: 'user', targetId: parseInt(req.params.id), detail: { banned: false } })
+    }
+    if (role !== undefined) {
+      await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.ROLE_CHANGE, targetType: 'user', targetId: parseInt(req.params.id), detail: { new_role: role } })
+    }
+
     res.json(success(null, '更新成功'))
   } catch (err) {
     res.json(error('更新失败'))
@@ -219,6 +238,7 @@ router.put('/materials/:id/audit', adminAuth, async (req, res) => {
       "UPDATE materials SET audit_status=?, status=? WHERE id=?",
       [audit_status, audit_status === 'approved' ? 1 : 0, req.params.id]
     )
+    await writeLog({ operatorId: req.user.id, action: audit_status === 'approved' ? ACTION_TYPES.MATERIAL_APPROVE : ACTION_TYPES.MATERIAL_REJECT, targetType: 'material', targetId: parseInt(req.params.id), detail: { audit_status } })
     res.json(success(null, '审核成功'))
   } catch (err) {
     res.json(error('审核失败'))
@@ -247,6 +267,7 @@ router.put('/posts/:id/audit', adminAuth, async (req, res) => {
       "UPDATE forum_posts SET audit_status=?, status=? WHERE id=?",
       [audit_status, audit_status === 'approved' ? 1 : 0, req.params.id]
     )
+    await writeLog({ operatorId: req.user.id, action: audit_status === 'approved' ? ACTION_TYPES.POST_APPROVE : ACTION_TYPES.POST_REJECT, targetType: 'post', targetId: parseInt(req.params.id), detail: { audit_status } })
     res.json(success(null, '审核成功'))
   } catch (err) {
     res.json(error('审核失败'))
@@ -439,6 +460,8 @@ router.put('/reports/:id/handle', adminAuth, async (req, res) => {
       }
     }
     
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.REPORT_HANDLE, targetType: 'report', targetId: parseInt(req.params.id), detail: { status, action, ban_user } })
+
     res.json(success(null, '处理完成'))
   } catch (err) {
     console.error(err)
@@ -607,6 +630,8 @@ router.post('/notifications', adminAuth, async (req, res) => {
     }
 
     res.json(success({ id: result.insertId }, '发布成功'))
+
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.NOTICE_CREATE, targetType: 'notification', targetId: result.insertId, detail: { title, type } })
   } catch (err) {
     console.error('发布通知失败:', err)
     res.json(error('发布失败'))
@@ -620,6 +645,7 @@ router.put('/notifications/:id', adminAuth, async (req, res) => {
       'UPDATE notifications SET title=COALESCE(?,title), content=COALESCE(?,content), type=COALESCE(?,type), is_top=COALESCE(?,is_top), is_strong_remind=COALESCE(?,is_strong_remind), status=COALESCE(?,status) WHERE id=?',
       [title, content, type, is_top, is_strong_remind, status, req.params.id]
     )
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.NOTICE_UPDATE, targetType: 'notification', targetId: parseInt(req.params.id), detail: { title } })
     res.json(success(null, '更新成功'))
   } catch (err) {
     res.json(error('更新失败'))
@@ -629,6 +655,7 @@ router.put('/notifications/:id', adminAuth, async (req, res) => {
 router.delete('/notifications/:id', adminAuth, async (req, res) => {
   try {
     await db.query('DELETE FROM notifications WHERE id=?', [req.params.id])
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.NOTICE_DELETE, targetType: 'notification', targetId: parseInt(req.params.id) })
     res.json(success(null, '删除成功'))
   } catch (err) {
     res.json(error('删除失败'))
@@ -645,6 +672,8 @@ router.post('/ads', adminAuth, upload.single('image'), async (req, res) => {
       [title || '', '/uploads/' + req.file.filename, link_url || '', link_type || 'page', position || 'banner', sort_order || 0, start_time || null, end_time || null]
     )
     res.json(success({ id: result.insertId }, '添加成功'))
+
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.AD_CREATE, targetType: 'ad', targetId: result.insertId, detail: { title } })
   } catch (err) {
     res.json(error('添加失败'))
   }
@@ -664,6 +693,7 @@ router.put('/ads/:id', adminAuth, upload.single('image'), async (req, res) => {
     }
     values.push(req.params.id)
     await db.query(`UPDATE ads SET ${fields.join(',')} WHERE id=?`, values)
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.AD_UPDATE, targetType: 'ad', targetId: parseInt(req.params.id) })
     res.json(success(null, '更新成功'))
   } catch (err) {
     res.json(error('更新失败'))
@@ -674,6 +704,7 @@ router.put('/ads/:id/status', adminAuth, async (req, res) => {
   try {
     const { status } = req.body
     await db.query('UPDATE ads SET status=? WHERE id=?', [status, req.params.id])
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.AD_UPDATE, targetType: 'ad', targetId: parseInt(req.params.id), detail: { new_status: status } })
     res.json(success(null, '操作成功'))
   } catch (err) {
     res.json(error('操作失败'))
@@ -699,6 +730,7 @@ router.post('/screens', adminAuth, upload.single('image'), async (req, res) => {
       'INSERT INTO screens (name, image_url, sort_order) VALUES (?, ?, ?)',
       [name || '', '/uploads/' + req.file.filename, sort_order || 0]
     )
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.SCREEN_MANAGE, targetType: 'screen', targetId: result.insertId, detail: { name, action: 'create' } })
     res.json(success({ id: result.insertId }, '添加成功'))
   } catch (err) {
     res.json(error('添加失败'))
@@ -719,6 +751,7 @@ router.put('/screens/:id', adminAuth, upload.single('image'), async (req, res) =
     }
     values.push(req.params.id)
     await db.query(`UPDATE screens SET ${fields.join(',')} WHERE id=?`, values)
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.SCREEN_MANAGE, targetType: 'screen', targetId: parseInt(req.params.id), detail: { action: 'update' } })
     res.json(success(null, '更新成功'))
   } catch (err) {
     res.json(error('更新失败'))
@@ -738,6 +771,7 @@ router.put('/screens/:id/status', adminAuth, async (req, res) => {
 router.delete('/screens/:id', adminAuth, async (req, res) => {
   try {
     await db.query('DELETE FROM screens WHERE id=?', [req.params.id])
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.SCREEN_MANAGE, targetType: 'screen', targetId: parseInt(req.params.id), detail: { action: 'delete' } })
     res.json(success(null, '删除成功'))
   } catch (err) {
     res.json(error('删除失败'))
@@ -857,6 +891,7 @@ router.put('/interview-audit/:type/:id', adminAuth, async (req, res) => {
       `UPDATE ${tableName} SET audit_status=? WHERE id=?`,
       [audit_status, id]
     )
+    await writeLog({ operatorId: req.user.id, action: audit_status === 'approved' ? ACTION_TYPES.INTERVIEW_APPROVE : ACTION_TYPES.INTERVIEW_REJECT, targetType: `interview_${type}`, targetId: parseInt(id), detail: { audit_status } })
     res.json(success(null, '操作成功'))
   } catch (err) {
     console.error('审核复试资料失败:', err)
@@ -885,6 +920,9 @@ router.get('/kaoyan-export', adminAuth, async (req, res) => {
     }
 
     const records = await db.query(sql)
+
+    await writeLog({ operatorId: req.user.id, action: ACTION_TYPES.KADATA_EXPORT, targetType: 'kaoyan_data', detail: { sort: sortType, count: records.length } })
+
 
     const workbook = new ExcelJS.Workbook()
     workbook.creator = '考研管理系统'
@@ -979,6 +1017,27 @@ router.get('/kaoyan-export', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('导出考研数据失败:', err)
     res.json(error('导出失败'))
+  }
+})
+
+// 审计日志查询
+router.get('/audit-logs', adminAuth, async (req, res) => {
+  try {
+    const { userId, action, targetType, targetId, startDate, endDate, page = 1, pageSize = 20 } = req.query
+    const result = await queryLogs({
+      userId: userId ? parseInt(userId) : undefined,
+      action,
+      targetType,
+      targetId: targetId ? parseInt(targetId) : undefined,
+      startDate,
+      endDate,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    })
+    res.json(pageSuccess(result.list, result.total, result.page, result.pageSize))
+  } catch (err) {
+    console.error('查询审计日志失败:', err)
+    res.json(error('查询审计日志失败'))
   }
 })
 

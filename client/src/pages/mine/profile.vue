@@ -1,4 +1,4 @@
-<template>
+﻿﻿<template>
   <view class="page">
     <view class="avatar-section">
       <view class="avatar-wrapper" @click="chooseAvatar">
@@ -140,7 +140,7 @@ const loadUserInfo = async () => {
 }
 
 const chooseAvatar = async () => {
-  const authorized = await ensureAuthorize('album')
+  const authorized = await ensureAuthorize('chooseImage')
   if (!authorized) return
 
   uni.chooseImage({
@@ -150,7 +150,7 @@ const chooseAvatar = async () => {
     success: async (res) => {
       const tempFilePath = res.tempFilePaths[0]
       try {
-        const token = uni.getStorageSync('token')
+        const token = uni.getStorageSync('accessToken')
         uni.showLoading({ title: '上传中...' })
         const uploadRes = await new Promise((resolve, reject) => {
           uni.uploadFile({

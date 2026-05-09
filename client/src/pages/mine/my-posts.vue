@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="stats-bar card">
       <view class="stat-item" @click="filterByCategory('')">
@@ -124,7 +124,7 @@ const loadPosts = async (reset = false) => {
   }
 
   try {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync('accessToken')
     if (!token) {
       postList.value = []
       loading.value = false

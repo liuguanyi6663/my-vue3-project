@@ -1,5 +1,11 @@
 const express = require('express')
 const router = express.Router()
+
+/** @swagger
+ * tags:
+ *   name: 资料中心
+ *   description: 资料分类、搜索、上传/下载、评价、收藏管理
+ */
 const path = require('path')
 const fs = require('fs')
 const db = require('../utils/db')

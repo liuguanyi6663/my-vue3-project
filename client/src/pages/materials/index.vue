@@ -89,7 +89,9 @@
         <text class="empty-text">暂无资料</text>
       </view>
 
-      <view v-if="loading" class="loading-tip">
+      <MaterialSkeleton v-if="initialLoading" />
+
+      <view v-if="loading && !initialLoading && materialList.length > 0" class="loading-tip">
         <text>加载中...</text>
       </view>
 
@@ -110,6 +112,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { materialApi } from '@/api/index'
+import MaterialSkeleton from '@/components/Skeleton/MaterialSkeleton.vue'
 
 const FIXED_CATEGORIES = [
   { id: 1, name: '公共课' },

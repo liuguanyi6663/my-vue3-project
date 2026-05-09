@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="header">
       <text class="header-icon">📊</text>
@@ -120,7 +120,7 @@ const loadStats = async () => {
 }
 
 const doExport = async (sortType) => {
-  const token = uni.getStorageSync('token')
+  const token = uni.getStorageSync('accessToken')
   if (!token) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     return

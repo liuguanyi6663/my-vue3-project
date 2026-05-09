@@ -2,7 +2,19 @@ const crypto = require('crypto')
 
 const RATE_LIMIT_WINDOW = 60 * 1000
 const RATE_LIMIT_MAX = 100
+const CLEANUP_INTERVAL = 5 * 60 * 1000
 const requestCounts = new Map()
+
+const cleanupExpiredEntries = () => {
+  const now = Date.now()
+  for (const [key, entry] of requestCounts.entries()) {
+    if (now - entry.windowStart > RATE_LIMIT_WINDOW * 2) {
+      requestCounts.delete(key)
+    }
+  }
+}
+
+setInterval(cleanupExpiredEntries, CLEANUP_INTERVAL)
 
 const rateLimiter = (options = {}) => {
   const {
@@ -59,20 +71,26 @@ const sanitizeInput = (input) => {
     .trim()
 }
 
+const sanitizeDeep = (obj) => {
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeDeep(item))
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const result = {}
+    for (const key in obj) {
+      result[key] = sanitizeDeep(obj[key])
+    }
+    return result
+  }
+  return sanitizeInput(obj)
+}
+
 const sanitizeMiddleware = (req, res, next) => {
   if (req.body) {
-    for (const key in req.body) {
-      if (typeof req.body[key] === 'string') {
-        req.body[key] = sanitizeInput(req.body[key])
-      }
-    }
+    req.body = sanitizeDeep(req.body)
   }
   if (req.query) {
-    for (const key in req.query) {
-      if (typeof req.query[key] === 'string') {
-        req.query[key] = sanitizeInput(req.query[key])
-      }
-    }
+    req.query = sanitizeDeep(req.query)
   }
   next()
 }

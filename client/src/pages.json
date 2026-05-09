@@ -105,6 +105,12 @@
       }
     },
     {
+      "path": "pages/mine/ai-chat",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/mine/messages",
       "style": {
         "navigationBarTitleText": "我的消息"
