@@ -268,6 +268,13 @@ const addWelcomeMessage = () => {
 }
 
 const loadHistory = async () => {
+  const token = uni.getStorageSync('token')
+  if (!token) {
+    addWelcomeMessage()
+    loading.value = false
+    return
+  }
+
   loading.value = true
   try {
     const res = await aiApi.getHistory()

@@ -57,11 +57,14 @@ const filterSensitiveWords = async (text) => {
   let filtered = text
   let hasSensitive = false
 
+  const normalizedText = filtered.normalize('NFKC')
+
   for (const word of words) {
-    if (filtered.toLowerCase().includes(word.toLowerCase())) {
+    const normalizedWord = word.normalize('NFKC').toLowerCase()
+    if (normalizedText.includes(normalizedWord)) {
       hasSensitive = true
       const escapedWord = escapeRegExp(word)
-      const regex = new RegExp(escapedWord, 'gi')
+      const regex = new RegExp(escapedWord, 'gu')
       filtered = filtered.replace(regex, '*'.repeat(word.length))
     }
   }
@@ -73,10 +76,11 @@ const containsSensitiveWords = async (text) => {
   if (!text) return false
 
   const words = await loadSensitiveWords()
-  const lowerText = text.toLowerCase()
+  const normalizedText = text.normalize('NFKC').toLowerCase()
 
   for (const word of words) {
-    if (lowerText.includes(word.toLowerCase())) {
+    const normalizedWord = word.normalize('NFKC').toLowerCase()
+    if (normalizedText.includes(normalizedWord)) {
       return true
     }
   }

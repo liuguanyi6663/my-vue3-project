@@ -73,6 +73,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { userApi } from '@/api/index'
+import { setTokens, setCurrentUser } from '@/utils/auth'
 
 const phone = ref('')
 const loading = ref(false)
@@ -88,10 +89,8 @@ const completeLogin = async (loginParams) => {
   try {
     const res = await userApi.login(loginParams)
     
-    uni.setStorageSync('accessToken', res.data.accessToken)
-    uni.setStorageSync('refreshToken', res.data.refreshToken)
-    uni.setStorageSync('userInfo', res.data.userInfo)
-    uni.setStorageSync('user', res.data.userInfo)
+    setTokens(res.data.accessToken, res.data.refreshToken)
+    setCurrentUser(res.data.userInfo)
     
     uni.hideLoading()
     uni.showToast({ title: '登录成功', icon: 'success' })

@@ -17,32 +17,35 @@ router.get('/posts', optionalAuth, async (req, res) => {
     const pageNum = parseInt(page) || 1
     const size = parseInt(pageSize) || 10
     const offset = (pageNum - 1) * size
-    
-    console.log('获取帖子列表请求，参数:', { category, keyword, page, pageSize, sort })
-    
+
     let sql = `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar, u.is_landed as author_is_landed,
                CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
                FROM forum_posts p 
                LEFT JOIN users u ON p.user_id=u.id 
                WHERE p.status=1`
-    
+    const listParams = []
+
     if (category) {
-      sql += ` AND p.category='${category}'`
+      sql += ' AND p.category=?'
+      listParams.push(category)
     }
     if (keyword) {
-      sql += ` AND (p.title LIKE '%${keyword}%' OR p.content LIKE '%${keyword}%')`
+      sql += ' AND (p.title LIKE ? OR p.content LIKE ?)'
+      listParams.push(`%${keyword}%`, `%${keyword}%`)
     }
-    
-    const sortOrder = sort === 'hot' ? 'p.like_count DESC' :
-                      sort === 'comment' ? 'p.comment_count DESC' : 
-                      sort === 'popular' ? '(p.like_count + p.comment_count) DESC' :
-                      'p.is_top DESC, p.created_at DESC'
-    sql += ` ORDER BY ${sortOrder} LIMIT ${size} OFFSET ${offset}`
-    
-    console.log('查询SQL:', sql)
-    
-    const list = await db.query(sql)
-    console.log('查询到的帖子列表:', list)
+
+    const ALLOWED_SORTS = {
+      'hot': 'p.like_count DESC',
+      'comment': 'p.comment_count DESC',
+      'popular': '(p.like_count + p.comment_count) DESC',
+      'created_at': 'p.is_top DESC, p.created_at DESC'
+    }
+    const sortOrder = ALLOWED_SORTS[sort] || ALLOWED_SORTS['created_at']
+
+    sql += ` ORDER BY ${sortOrder} LIMIT ? OFFSET ?`
+    listParams.push(size, offset)
+
+    const list = await db.query(sql, listParams)
     
     let countSql = `SELECT COUNT(*) as total FROM forum_posts p WHERE p.status=1`
     const countParams = []
@@ -237,27 +240,30 @@ router.post('/posts', auth, async (req, res) => {
     if (!category || !title || !content) {
       return res.json(error('请填写完整信息'))
     }
-    
+    if (title.length > 100) {
+      return res.json(error('标题不能超过100个字符'))
+    }
+    if (content.length > 50000) {
+      return res.json(error('内容不能超过50000个字符'))
+    }
+
     try {
-      const sensitiveWords = await db.query('SELECT word FROM sensitive_words WHERE status=1')
-      for (const sw of sensitiveWords) {
-        if (content.includes(sw.word) || title.includes(sw.word)) {
-          return res.json(error('内容包含敏感词，请修改后提交'))
-        }
+      const { containsSensitiveWords } = require('../utils/sensitive-words')
+      if (await containsSensitiveWords(title) || await containsSensitiveWords(content)) {
+        return res.json(error('内容包含敏感词，请修改后提交'))
       }
     } catch (e) {
-      console.warn('敏感词表查询失败，跳过检测:', e.message)
+      console.warn('敏感词检测失败，跳过:', e.message)
     }
-    
-    // 如果是匿名树洞分类，强制匿名
+
     const finalIsAnonymous = category === 'treehole' ? 1 : (is_anonymous ? 1 : 0)
-    
+
     const result = await db.query(
-      `INSERT INTO forum_posts (user_id, category, title, content, images, tags, is_anonymous, audit_status) 
+      `INSERT INTO forum_posts (user_id, category, title, content, images, tags, is_anonymous, audit_status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'approved')`,
       [req.user.id, category, title, content, JSON.stringify(images || []), JSON.stringify(tags || []), finalIsAnonymous]
     )
-    
+
     res.json(success({ id: result.insertId }, '发布成功'))
   } catch (err) {
     console.error(err)
@@ -352,16 +358,17 @@ router.post('/posts/:id/comments', auth, async (req, res) => {
     }
     const { content, parent_id, reply_to_user_id } = req.body
     if (!content) return res.json(error('请输入评论内容'))
+    if (content.length > 5000) {
+      return res.json(error('评论不能超过5000个字符'))
+    }
 
     try {
-      const sensitiveWords = await db.query('SELECT word FROM sensitive_words WHERE status=1')
-      for (const sw of sensitiveWords) {
-        if (content.includes(sw.word)) {
-          return res.json(error('评论包含敏感词'))
-        }
+      const { containsSensitiveWords } = require('../utils/sensitive-words')
+      if (await containsSensitiveWords(content)) {
+        return res.json(error('评论包含敏感词'))
       }
     } catch (e) {
-      console.warn('敏感词表查询失败，跳过检测:', e.message)
+      console.warn('敏感词检测失败，跳过:', e.message)
     }
 
     const parentId = parent_id || 0

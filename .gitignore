@@ -1,3 +1,8 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -11,6 +16,10 @@ node_modules
 .DS_Store
 dist
 *.local
+
+# Uploaded files
+server/uploads/*
+!server/uploads/.gitkeep
 
 # Editor directories and files
 .idea

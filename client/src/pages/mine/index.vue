@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <view class="page">
     <!-- 用户信息卡片 -->
     <view class="user-card">

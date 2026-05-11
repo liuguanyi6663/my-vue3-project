@@ -1,9 +1,24 @@
+import { getToken, getRefreshToken, setTokens as authSetTokens, clearTokens, clearAllAuth } from '@/utils/auth'
+
 export const BASE_URL = 'http://127.0.0.1:3000/api'
 
 let loadingListeners = []
+let requestCount = 0
 
-function triggerLoadingChange(visible) {
-  loadingListeners.forEach(callback => callback(visible))
+function showLoading() {
+  requestCount++
+  if (requestCount === 1) {
+    loadingListeners.forEach(cb => cb(true))
+  }
+}
+
+function hideLoading() {
+  if (requestCount > 0) {
+    requestCount--
+  }
+  if (requestCount === 0) {
+    loadingListeners.forEach(cb => cb(false))
+  }
 }
 
 export function addRequestLoadingListener(callback) {
@@ -21,8 +36,7 @@ function checkNetworkStatus() {
   return new Promise((resolve) => {
     uni.getNetworkType({
       success: (res) => {
-        const networkType = res.networkType
-        const isWeakNetwork = ['2g', '3g', 'unknown'].includes(networkType.toLowerCase())
+        const isWeakNetwork = ['2g', '3g', 'unknown'].includes(res.networkType.toLowerCase())
         resolve(isWeakNetwork)
       },
       fail: () => {
@@ -44,29 +58,10 @@ function addRefreshSubscriber(callback) {
   refreshSubscribers.push(callback)
 }
 
-function getAccessToken() {
-  return uni.getStorageSync('accessToken')
-}
-
-function getRefreshToken() {
-  return uni.getStorageSync('refreshToken')
-}
-
-function setTokens(data) {
-  uni.setStorageSync('accessToken', data.accessToken)
-  uni.setStorageSync('refreshToken', data.refreshToken)
-}
-
-function clearTokens() {
-  uni.removeStorageSync('accessToken')
-  uni.removeStorageSync('refreshToken')
-}
-
 async function tryRefreshToken() {
   const refreshToken = getRefreshToken()
   if (!refreshToken) {
-    clearTokens()
-    uni.removeStorageSync('userInfo')
+    clearAllAuth()
     return null
   }
 
@@ -87,30 +82,24 @@ async function tryRefreshToken() {
         fail: (err) => reject(err)
       })
     })
-    setTokens(res.data)
+    authSetTokens(res.data.accessToken, res.data.refreshToken)
     return res.data.accessToken
   } catch (err) {
-    clearTokens()
-    uni.removeStorageSync('userInfo')
+    clearAllAuth()
     return null
   }
 }
 
 const request = async (options) => {
-  let showLoadingFlag = false
-  let loadingTimeout = null
+  let loadingTimer = null
 
   try {
     const isWeakNetwork = await checkNetworkStatus()
 
     if (isWeakNetwork) {
-      showLoadingFlag = true
-      triggerLoadingChange(true)
+      showLoading()
     } else {
-      loadingTimeout = setTimeout(() => {
-        showLoadingFlag = true
-        triggerLoadingChange(true)
-      }, 500)
+      loadingTimer = setTimeout(() => showLoading(), 500)
     }
 
     const executeRequest = (token) => {
@@ -158,27 +147,23 @@ const request = async (options) => {
             reject(err)
           },
           complete: () => {
-            if (loadingTimeout) {
-              clearTimeout(loadingTimeout)
+            if (loadingTimer) {
+              clearTimeout(loadingTimer)
             }
-            if (showLoadingFlag) {
-              triggerLoadingChange(false)
-            }
+            hideLoading()
           }
         })
       })
     }
 
-    const token = getAccessToken()
+    const token = getToken()
     const result = await executeRequest(token)
     return result
   } catch (error) {
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout)
+    if (loadingTimer) {
+      clearTimeout(loadingTimer)
     }
-    if (showLoadingFlag) {
-      triggerLoadingChange(false)
-    }
+    hideLoading()
 
     if (error && error._needRefresh) {
       if (!isRefreshing) {
@@ -190,7 +175,10 @@ const request = async (options) => {
           onRefreshed(newToken)
           return request(options)
         } else {
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.showToast({ title: '登录已过期，请重新登录', icon: 'none', duration: 2000 })
+          setTimeout(() => {
+            uni.navigateTo({ url: '/pages/login/login' })
+          }, 2000)
           throw { code: 401, msg: '请重新登录' }
         }
       } else {

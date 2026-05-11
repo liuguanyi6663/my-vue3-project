@@ -1,4 +1,4 @@
-﻿export function getCurrentUser() {
+export function getCurrentUser() {
   try {
     return JSON.parse(uni.getStorageSync('user') || '{}')
   } catch (e) {
@@ -61,7 +61,6 @@ export function clearTokens() {
   try {
     uni.removeStorageSync('accessToken')
     uni.removeStorageSync('refreshToken')
-    uni.removeStorageSync('token')
   } catch (e) {
     console.error('清除token失败:', e)
   }

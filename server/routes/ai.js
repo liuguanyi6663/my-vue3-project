@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { auth } = require('../middleware/auth')
+const { optionalAuth } = require('../middleware/auth')
 const db = require('../utils/db')
 const https = require('https')
 const http = require('http')
@@ -253,8 +253,11 @@ const getConversationHistory = async (userId, limit = 50) => {
   }
 }
 
-router.get('/history', auth, async (req, res) => {
+router.get('/history', optionalAuth, async (req, res) => {
   try {
+    if (!req.user) {
+      return res.json({ code: 200, data: { messages: [] } })
+    }
     const history = await getConversationHistory(req.user.id)
     res.json({ code: 200, data: { messages: history } })
   } catch (err) {
@@ -262,8 +265,11 @@ router.get('/history', auth, async (req, res) => {
   }
 })
 
-router.delete('/history', auth, async (req, res) => {
+router.delete('/history', optionalAuth, async (req, res) => {
   try {
+    if (!req.user) {
+      return res.json({ code: 200, msg: '已清除' })
+    }
     await db.query('DELETE FROM ai_conversations WHERE user_id = ?', [req.user.id])
     res.json({ code: 200, msg: '对话历史已清除' })
   } catch (err) {
@@ -271,7 +277,7 @@ router.delete('/history', auth, async (req, res) => {
   }
 })
 
-router.post('/chat', auth, async (req, res) => {
+router.post('/chat', optionalAuth, async (req, res) => {
   const { messages } = req.body
 
   if (!messages || !Array.isArray(messages)) {
@@ -281,7 +287,9 @@ router.post('/chat', auth, async (req, res) => {
   const userLastMessage = messages[messages.length - 1]?.content || ''
 
   try {
-    await saveConversation(req.user.id, 'user', userLastMessage)
+    if (req.user) {
+      await saveConversation(req.user.id, 'user', userLastMessage)
+    }
 
     let reply
 
@@ -296,7 +304,9 @@ router.post('/chat', auth, async (req, res) => {
       reply = getDefaultResponse(userLastMessage, messages)
     }
 
-    await saveConversation(req.user.id, 'assistant', reply)
+    if (req.user) {
+      await saveConversation(req.user.id, 'assistant', reply)
+    }
 
     res.json({ code: 200, data: { content: reply } })
   } catch (err) {

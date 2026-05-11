@@ -99,13 +99,12 @@ async function deleteAllUserData(userId) {
 async function cleanupExpiredAccounts() {
   try {
     console.log('开始检查并清理过期账号...')
-    
-    // 查询所有超过30秒冷静期的账号
+
     const expiredUsers = await db.query(
-      'SELECT id, delete_request_at FROM users WHERE is_deleting = 1 AND delete_request_at <= DATE_SUB(NOW(), INTERVAL 30 SECOND)'
+      'SELECT id, delete_request_at FROM users WHERE is_deleting = 1 AND delete_request_at <= DATE_SUB(NOW(), INTERVAL 7 DAY)'
     )
-    
-    console.log(`发现 ${expiredUsers.length} 个账号超过冷静期，准备删除`)
+
+    console.log(`发现 ${expiredUsers.length} 个账号超过冷静期（7天），准备删除`)
     
     for (const user of expiredUsers) {
       try {

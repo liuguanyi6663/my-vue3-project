@@ -1,4 +1,4 @@
-﻿import { get, post, put, del, BASE_URL } from './request'
+﻿﻿import { get, post, put, del, BASE_URL } from './request'
 
 export const userApi = {
   login: (data) => post('/user/login', data),

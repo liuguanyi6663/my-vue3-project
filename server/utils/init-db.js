@@ -61,15 +61,19 @@ const initDatabase = async () => {
         id INT PRIMARY KEY AUTO_INCREMENT,
         user_id INT NOT NULL,
         subject VARCHAR(50) NOT NULL,
-        task_name VARCHAR(100) NOT NULL,
+        task_name VARCHAR(200) NOT NULL,
         plan_duration INT DEFAULT 60,
         priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
-        status ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending',
+        status ENUM('pending', 'in_progress', 'completed', 'skipped') DEFAULT 'pending',
         plan_date DATE NOT NULL,
-        template_type VARCHAR(30),
+        template_type ENUM('basic','strengthen','sprint','custom') DEFAULT 'custom',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_plan_date (plan_date),
+        INDEX idx_status (status),
+        INDEX idx_user_date_status (user_id, plan_date, status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `)
 
@@ -79,7 +83,7 @@ const initDatabase = async () => {
         user_id INT NOT NULL,
         plan_id INT,
         subject VARCHAR(50) NOT NULL,
-        task_name VARCHAR(100) NOT NULL,
+        task_name VARCHAR(200) NOT NULL,
         duration INT DEFAULT 0,
         remark TEXT,
         mood VARCHAR(20) DEFAULT NULL COMMENT '心情:happy/calm/anxious/tired/sad',
@@ -559,6 +563,25 @@ const initDatabase = async () => {
     if (!userColNames.includes('delete_request_at')) {
       await db.query("ALTER TABLE users ADD COLUMN delete_request_at DATETIME DEFAULT NULL COMMENT '注销请求时间'")
       console.log('✅ users表添加delete_request_at字段')
+    }
+
+    const existingIndexes = await db.query('SHOW INDEX FROM study_plans')
+    const existingIndexNames = existingIndexes.map(idx => idx.Key_name)
+    if (!existingIndexNames.includes('idx_user_id')) {
+      await db.query('ALTER TABLE study_plans ADD INDEX idx_user_id (user_id)')
+      console.log('✅ study_plans表添加idx_user_id索引')
+    }
+    if (!existingIndexNames.includes('idx_plan_date')) {
+      await db.query('ALTER TABLE study_plans ADD INDEX idx_plan_date (plan_date)')
+      console.log('✅ study_plans表添加idx_plan_date索引')
+    }
+    if (!existingIndexNames.includes('idx_status')) {
+      await db.query('ALTER TABLE study_plans ADD INDEX idx_status (status)')
+      console.log('✅ study_plans表添加idx_status索引')
+    }
+    if (!existingIndexNames.includes('idx_user_date_status')) {
+      await db.query('ALTER TABLE study_plans ADD INDEX idx_user_date_status (user_id, plan_date, status)')
+      console.log('✅ study_plans表添加idx_user_date_status索引')
     }
 
     console.log('✅ 数据库表初始化完成')

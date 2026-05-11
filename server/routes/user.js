@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const bcrypt = require('bcrypt')
 const { v4: uuidv4 } = require('uuid')
 const db = require('../utils/db')
 const { success, error } = require('../utils/response')
@@ -9,6 +10,8 @@ const config = require('../config/index')
 const { auth, optionalAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload')
 const weixin = require('../utils/wechat')
+
+const BCRYPT_ROUNDS = 12
 
 /**
  * @swagger
@@ -66,8 +69,12 @@ function generateTokenFamily() {
   return crypto.randomBytes(16).toString('hex')
 }
 
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex')
+async function hashPassword(password) {
+  return bcrypt.hash(password, BCRYPT_ROUNDS)
+}
+
+async function verifyPassword(password, hash) {
+  return bcrypt.compare(password, hash)
 }
 
 async function issueTokens(userId) {
@@ -198,7 +205,8 @@ router.post('/login', async (req, res) => {
       const users = await db.query('SELECT * FROM users WHERE username = ?', [username])
       if (users.length > 0) {
         const foundUser = users[0]
-        if (foundUser.password !== hashPassword(password)) {
+        const isPasswordValid = await verifyPassword(password, foundUser.password)
+        if (!isPasswordValid) {
           return res.json(error('密码错误'))
         }
         user = foundUser
@@ -426,7 +434,7 @@ router.post('/delete-request', auth, async (req, res) => {
     if (user.is_deleting === 1) {
       const deleteRequestAt = new Date(user.delete_request_at)
       const now = new Date()
-      const daysLeft = Math.ceil((3 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
+      const daysLeft = Math.ceil((7 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
       return res.json(success({ 
         is_deleting: true, 
         delete_request_at: user.delete_request_at,
@@ -440,7 +448,7 @@ router.post('/delete-request', auth, async (req, res) => {
       [userId]
     )
     
-    res.json(success({ is_deleting: true, delete_request_at: new Date(), days_left: 3 }, '注销申请已提交，3天冷静期后将彻底删除账号'))
+    res.json(success({ is_deleting: true, delete_request_at: new Date(), days_left: 7 }, '注销申请已提交，7天冷静期后将彻底删除账号'))
   } catch (err) {
     console.error(err)
     res.json(error('提交注销申请失败'))
@@ -481,7 +489,7 @@ router.get('/delete-status', auth, async (req, res) => {
     if (user.is_deleting === 1 && user.delete_request_at) {
       const deleteRequestAt = new Date(user.delete_request_at)
       const now = new Date()
-      daysLeft = Math.ceil((3 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
+      daysLeft = Math.ceil((7 * 24 * 60 * 60 * 1000 - (now - deleteRequestAt)) / (24 * 60 * 60 * 1000))
       daysLeft = daysLeft > 0 ? daysLeft : 0
     }
     

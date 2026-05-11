@@ -151,57 +151,54 @@ router.get('/detail/:id', optionalAuth, async (req, res) => {
       [req.params.id]
     )
 
+    const reviewIds = reviews.map(r => r.id)
+
+    const replyCountRecords = reviewIds.length > 0 ? await db.query(
+      'SELECT parent_id, COUNT(*) as cnt FROM material_reviews WHERE parent_id IN (?) GROUP BY parent_id',
+      [reviewIds]
+    ) : []
+    const replyCountMap = {}
+    replyCountRecords.forEach(r => { replyCountMap[r.parent_id] = r.cnt })
+
+    const allReplies = reviewIds.length > 0 ? await db.query(
+      `SELECT r.*, u.nickname, u.avatar,
+       ru.nickname as reply_to_nickname
+       FROM material_reviews r
+       LEFT JOIN users u ON r.user_id=u.id
+       LEFT JOIN users ru ON r.reply_to_user_id=ru.id
+       WHERE r.parent_id IN (?)
+       ORDER BY r.created_at ASC`,
+      [reviewIds]
+    ) : []
+    const repliesByParent = {}
+    allReplies.forEach(r => {
+      if (!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = []
+      repliesByParent[r.parent_id].push(r)
+    })
+
     if (req.user) {
+      const allReviewAndReplyIds = [...reviewIds, ...allReplies.map(r => r.id)]
+      const likeRecords = allReviewAndReplyIds.length > 0 ? await db.query(
+        'SELECT review_id FROM review_likes WHERE user_id=? AND review_id IN (?)',
+        [req.user.id, allReviewAndReplyIds]
+      ) : []
+      const likedIds = new Set(likeRecords.map(r => r.review_id))
+
       for (const review of reviews) {
-        const likeRecord = await db.query(
-          'SELECT * FROM review_likes WHERE user_id=? AND review_id=?',
-          [req.user.id, review.id]
-        )
-        review.isLiked = likeRecord.length > 0
+        review.isLiked = likedIds.has(review.id)
+        review.total_replies = replyCountMap[review.id] || 0
 
-        const replyCount = await db.query(
-          'SELECT COUNT(*) as cnt FROM material_reviews WHERE parent_id=?',
-          [review.id]
-        )
-        review.total_replies = replyCount[0].cnt
-
-        const replies = await db.query(
-          `SELECT r.*, u.nickname, u.avatar,
-           ru.nickname as reply_to_nickname
-           FROM material_reviews r
-           LEFT JOIN users u ON r.user_id=u.id
-           LEFT JOIN users ru ON r.reply_to_user_id=ru.id
-           WHERE r.parent_id=?
-           ORDER BY r.created_at ASC LIMIT 20`,
-          [review.id]
-        )
+        const replies = (repliesByParent[review.id] || []).slice(0, 20)
         for (const reply of replies) {
-          const replyLike = await db.query(
-            'SELECT * FROM review_likes WHERE user_id=? AND review_id=?',
-            [req.user.id, reply.id]
-          )
-          reply.isLiked = replyLike.length > 0
+          reply.isLiked = likedIds.has(reply.id)
         }
         review.replies = replies
       }
     } else {
       for (const review of reviews) {
-        const replyCount = await db.query(
-          'SELECT COUNT(*) as cnt FROM material_reviews WHERE parent_id=?',
-          [review.id]
-        )
-        review.total_replies = replyCount[0].cnt
+        review.total_replies = replyCountMap[review.id] || 0
 
-        const replies = await db.query(
-          `SELECT r.*, u.nickname, u.avatar,
-           ru.nickname as reply_to_nickname
-           FROM material_reviews r
-           LEFT JOIN users u ON r.user_id=u.id
-           LEFT JOIN users ru ON r.reply_to_user_id=ru.id
-           WHERE r.parent_id=?
-           ORDER BY r.created_at ASC LIMIT 20`,
-          [review.id]
-        )
+        const replies = (repliesByParent[review.id] || []).slice(0, 20)
         for (const reply of replies) {
           reply.isLiked = false
         }
@@ -278,21 +275,27 @@ router.get('/download/:id', auth, async (req, res) => {
   try {
     const materials = await db.query('SELECT * FROM materials WHERE id=? AND audit_status="approved" AND status=1', [req.params.id])
     if (materials.length === 0) return res.status(404).json(error('资料不存在或未审核通过'))
-    
+
     const material = materials[0]
-    
+
     const filePath = path.join(__dirname, '..', material.file_path)
-    if (!fs.existsSync(filePath)) {
+    const normalizedPath = path.normalize(filePath)
+    const uploadsDir = path.join(__dirname, '..', 'uploads')
+    if (!normalizedPath.startsWith(uploadsDir + path.sep) && normalizedPath !== uploadsDir) {
+      return res.status(403).json(error('非法文件路径'))
+    }
+
+    if (!fs.existsSync(normalizedPath)) {
       return res.status(404).json(error('文件不存在'))
     }
-    
+
     await db.query('UPDATE materials SET download_count=download_count+1 WHERE id=?', [req.params.id])
     await db.query(
       'INSERT INTO download_logs (user_id, material_id) VALUES (?, ?)',
       [req.user.id, req.params.id]
     )
-    
-    res.download(filePath, material.file_name)
+
+    res.download(normalizedPath, material.file_name)
   } catch (err) {
     console.error(err)
     res.status(500).json(error('下载失败'))

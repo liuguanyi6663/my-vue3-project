@@ -23,14 +23,41 @@ const { initSensitiveWords } = require('./utils/sensitive-words')
 const { initRedis } = require('./utils/redis')
 const { cacheMiddleware, CACHE_TTL, invalidateCache, clearCache } = require('./middleware/cache')
 const { rateLimiter, securityHeaders, sanitizeMiddleware } = require('./middleware/security')
-const { handleMulterError } = require('./middleware/upload')
 const { requestLogger, logger } = require('./utils/logger')
+const { globalErrorHandler } = require('./utils/asyncHandler')
 const { setupSwagger } = require('./config/swagger')
+const config = require('./config/index')
 
 const app = express()
 
+if (!config.jwt.secret || !config.jwt.refreshSecret) {
+  const env = process.env.NODE_ENV || 'development'
+  if (env === 'production') {
+    console.error('[FATAL] JWT_SECRET and JWT_REFRESH_SECRET must be set in .env for production')
+    process.exit(1)
+  }
+  console.warn('[WARN] JWT_SECRET / JWT_REFRESH_SECRET not set in .env')
+  console.warn('[WARN] Using auto-generated keys for development only. NEVER use in production!')
+  config.jwt.secret = config.jwt.secret || require('crypto').randomBytes(32).toString('hex')
+  config.jwt.refreshSecret = config.jwt.refreshSecret || require('crypto').randomBytes(32).toString('hex')
+}
+
+const getAllowedOrigins = () => {
+  if (process.env.ALLOWED_ORIGINS) {
+    return process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  }
+  return ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000']
+}
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  origin: (origin, callback) => {
+    const allowed = getAllowedOrigins()
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true
 }))
 app.use(express.json({ limit: '50mb' }))
@@ -74,12 +101,14 @@ app.get('/api/health', (req, res) => {
   res.json({ code: 200, msg: 'ok', data: { timestamp: Date.now() } })
 })
 
-app.get('/api/cache/stats', (req, res) => {
+const { adminAuth } = require('./middleware/auth')
+
+app.get('/api/cache/stats', adminAuth, (req, res) => {
   const { cache } = require('./middleware/cache')
   res.json({ code: 200, data: cache.stats() })
 })
 
-app.post('/api/cache/clear', (req, res) => {
+app.post('/api/cache/clear', adminAuth, (req, res) => {
   clearCache().then(() => {
     res.json({ code: 200, msg: '缓存已清除' })
   }).catch(err => {
@@ -107,15 +136,8 @@ app.get('/', (req, res) => {
   res.json({ code: 200, msg: '考研小程序API服务运行中', data: { timestamp: Date.now() } })
 })
 
-app.use((err, req, res, next) => {
-  if (err.name === 'MulterError') {
-    return handleMulterError(err, req, res, next)
-  }
-  logger.error(err.stack || err.message)
-  res.status(500).json({ code: 500, msg: err.message || '服务器内部错误', data: null })
-})
+app.use(globalErrorHandler)
 
-const config = require('./config/index')
 const initDatabase = require('./utils/init-db')
 const { startCleanupJob } = require('./utils/accountCleanup')
 const { startTimelineReminderJob } = require('./utils/timelineReminder')

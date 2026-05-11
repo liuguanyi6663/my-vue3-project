@@ -4,6 +4,8 @@ USE `kaoyan_db`;
 -- 用户表
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(50) DEFAULT NULL COMMENT '用户名',
+  `password` VARCHAR(255) DEFAULT NULL COMMENT '密码(bcrypt)',
   `openid` VARCHAR(100) DEFAULT NULL COMMENT '微信openid',
   `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `student_id` VARCHAR(50) DEFAULT NULL COMMENT '学号',
@@ -25,6 +27,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `uk_openid` (`openid`),
   UNIQUE KEY `uk_phone` (`phone`),
   INDEX `idx_student_id` (`student_id`),
+  INDEX `idx_role` (`role`),
+  INDEX `idx_status` (`status`),
   INDEX `idx_is_deleting` (`is_deleting`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
@@ -127,7 +131,7 @@ CREATE TABLE IF NOT EXISTS `study_plans` (
   `task_name` VARCHAR(200) NOT NULL COMMENT '任务名称',
   `plan_duration` INT DEFAULT 60 COMMENT '计划时长(分钟)',
   `priority` ENUM('high','medium','low') DEFAULT 'medium' COMMENT '优先级',
-  `status` ENUM('pending','completed','skipped') DEFAULT 'pending' COMMENT '状态',
+  `status` ENUM('pending','in_progress','completed','skipped') DEFAULT 'pending' COMMENT '状态',
   `plan_date` DATE NOT NULL COMMENT '计划日期',
   `template_type` ENUM('basic','strengthen','sprint','custom') DEFAULT 'custom' COMMENT '模板类型',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -471,7 +475,8 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_sender` (`sender_id`),
   INDEX `idx_receiver` (`receiver_id`),
-  INDEX `idx_sender_receiver` (`sender_id`, `receiver_id`)
+  INDEX `idx_sender_receiver` (`sender_id`, `receiver_id`),
+  INDEX `idx_conversation` (`sender_id`, `receiver_id`, `is_read`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表';
 
 -- 插入初始数据

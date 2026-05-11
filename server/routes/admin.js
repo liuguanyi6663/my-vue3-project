@@ -313,66 +313,86 @@ router.get('/reports', adminAuth, async (req, res) => {
     params.push(parseInt(size), parseInt(offset))
     
     const reports = await db.query(sql, params)
-    
+
+    const reportsByType = {}
     for (const report of reports) {
       report.target_content = null
       report.target_author = null
-      
-      if (report.target_type === 'review') {
-        const review = await db.query(
-          `SELECT r.comment, r.score, u.nickname as author_name 
-           FROM material_reviews r LEFT JOIN users u ON r.user_id=u.id 
-           WHERE r.id=?`,
-          [report.target_id]
+      if (!reportsByType[report.target_type]) reportsByType[report.target_type] = []
+      reportsByType[report.target_type].push(report)
+    }
+
+    for (const [type, typeReports] of Object.entries(reportsByType)) {
+      const targetIds = typeReports.map(r => r.target_id)
+      if (targetIds.length === 0) continue
+
+      let rows = []
+      if (type === 'review') {
+        rows = await db.query(
+          `SELECT r.id, r.comment, r.score, u.nickname as author_name
+           FROM material_reviews r LEFT JOIN users u ON r.user_id=u.id
+           WHERE r.id IN (?)`,
+          [targetIds]
         )
-        if (review.length > 0) {
-          report.target_content = review[0].comment || `评分: ${review[0].score}分`
-          report.target_author = review[0].author_name
+      } else if (type === 'comment') {
+        rows = await db.query(
+          `SELECT c.id, c.content, u.nickname as author_name
+           FROM forum_comments c LEFT JOIN users u ON c.user_id=u.id
+           WHERE c.id IN (?)`,
+          [targetIds]
+        )
+      } else if (type === 'post') {
+        rows = await db.query(
+          `SELECT p.id, p.title, p.content, u.nickname as author_name
+           FROM forum_posts p LEFT JOIN users u ON p.user_id=u.id
+           WHERE p.id IN (?)`,
+          [targetIds]
+        )
+      } else if (type === 'material') {
+        rows = await db.query(
+          `SELECT m.id, m.title, u.nickname as author_name
+           FROM materials m LEFT JOIN users u ON m.uploader_id=u.id
+           WHERE m.id IN (?)`,
+          [targetIds]
+        )
+      } else if (type === 'message') {
+        rows = await db.query(
+          `SELECT m.id, m.content, m.sender_id, u.nickname as author_name
+           FROM messages m LEFT JOIN users u ON m.sender_id=u.id
+           WHERE m.id IN (?)`,
+          [targetIds]
+        )
+      }
+
+      const contentMap = {}
+      for (const row of rows) {
+        if (type === 'review') {
+          contentMap[row.id] = {
+            target_content: row.comment || `评分: ${row.score}分`,
+            target_author: row.author_name
+          }
+        } else if (type === 'post') {
+          contentMap[row.id] = {
+            target_content: row.title + ': ' + (row.content || '').substring(0, 100),
+            target_author: row.author_name
+          }
+        } else if (type === 'message') {
+          contentMap[row.id] = {
+            target_content: row.content,
+            target_author: row.author_name,
+            target_sender_id: row.sender_id
+          }
+        } else {
+          contentMap[row.id] = {
+            target_content: row.content || row.title,
+            target_author: row.author_name
+          }
         }
-      } else if (report.target_type === 'comment') {
-        const comment = await db.query(
-          `SELECT c.content, u.nickname as author_name 
-           FROM forum_comments c LEFT JOIN users u ON c.user_id=u.id 
-           WHERE c.id=?`,
-          [report.target_id]
-        )
-        if (comment.length > 0) {
-          report.target_content = comment[0].content
-          report.target_author = comment[0].author_name
-        }
-      } else if (report.target_type === 'post') {
-        const post = await db.query(
-          `SELECT p.title, p.content, u.nickname as author_name 
-           FROM forum_posts p LEFT JOIN users u ON p.user_id=u.id 
-           WHERE p.id=?`,
-          [report.target_id]
-        )
-        if (post.length > 0) {
-          report.target_content = post[0].title + ': ' + (post[0].content || '').substring(0, 100)
-          report.target_author = post[0].author_name
-        }
-      } else if (report.target_type === 'material') {
-        const material = await db.query(
-          `SELECT m.title, u.nickname as author_name 
-           FROM materials m LEFT JOIN users u ON m.uploader_id=u.id 
-           WHERE m.id=?`,
-          [report.target_id]
-        )
-        if (material.length > 0) {
-          report.target_content = material[0].title
-          report.target_author = material[0].author_name
-        }
-      } else if (report.target_type === 'message') {
-        const message = await db.query(
-          `SELECT m.content, u.nickname as author_name 
-           FROM messages m LEFT JOIN users u ON m.sender_id=u.id 
-           WHERE m.id=?`,
-          [report.target_id]
-        )
-        if (message.length > 0) {
-          report.target_content = message[0].content
-          report.target_author = message[0].author_name
-          report.target_sender_id = message[0].sender_id
+      }
+
+      for (const report of typeReports) {
+        if (contentMap[report.target_id]) {
+          Object.assign(report, contentMap[report.target_id])
         }
       }
     }

@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise')
 const config = require('../config/index')
+const { logger } = require('./logger')
 
 const pool = mysql.createPool({
   host: config.mysql.host,
@@ -14,7 +15,7 @@ const pool = mysql.createPool({
 
 module.exports = {
   query: async (sql, params) => {
-    console.log('执行SQL:', sql, params)
+    logger.debug('执行SQL', { sql, params })
     const [rows] = await pool.query(sql, params || [])
     return rows
   },

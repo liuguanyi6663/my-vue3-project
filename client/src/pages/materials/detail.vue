@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <view class="page" v-if="detail">
     <view class="card detail-header">
       <text class="detail-title">{{ detail.title }}</text>

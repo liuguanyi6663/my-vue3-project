@@ -4,15 +4,15 @@ module.exports = {
     host: process.env.MYSQL_HOST || 'localhost',
     port: process.env.MYSQL_PORT || 3306,
     user: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || '123456',
+    password: process.env.MYSQL_PASSWORD || '',
     database: process.env.MYSQL_DATABASE || 'kaoyan_db',
     timezone: '+08:00'
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'kaoyan-secret-key-2024',
+    secret: process.env.JWT_SECRET,
     accessExpiresIn: '15m',
     refreshExpiresIn: '7d',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'kaoyan-refresh-secret-2024'
+    refreshSecret: process.env.JWT_REFRESH_SECRET
   },
   redis: {
     enabled: process.env.REDIS_ENABLED !== 'false',
