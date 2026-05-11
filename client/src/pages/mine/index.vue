@@ -192,6 +192,7 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { userApi, studyApi, materialApi, messageApi, forumApi, titleCertApi } from '@/api/index'
 import { getAvatarUrl } from '@/utils/url'
+import { setCurrentUser, clearAllAuth } from '@/utils/auth'
 
 const userInfo = ref(null)
 const stats = ref({})
@@ -211,6 +212,7 @@ const loadUserInfo = async () => {
   try {
     const res = await userApi.getInfo()
     userInfo.value = res.data
+    setCurrentUser(res.data)
   } catch (e) {
     console.error('加载用户信息失败:', e)
   }
@@ -302,8 +304,7 @@ const logout = () => {
     content: '确定要退出登录吗？',
     success: (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('accessToken')
-        uni.removeStorageSync('userInfo')
+        clearAllAuth()
         userInfo.value = null
         stats.value = {}
         favoriteCount.value = 0

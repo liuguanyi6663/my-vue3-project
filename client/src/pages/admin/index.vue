@@ -87,11 +87,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { userApi } from '@/api/index'
+import { getCurrentUser, getToken, setCurrentUser } from '@/utils/auth'
 
 const userInfo = ref(null)
 
-const loadUserInfo = () => {
-  const user = uni.getStorageSync('userInfo')
+const loadUserInfo = async () => {
+  let user = getCurrentUser()
+
+  if (getToken()) {
+    try {
+      const res = await userApi.getInfo()
+      user = res.data || user
+      setCurrentUser(user)
+    } catch (e) {
+      console.error('加载管理员信息失败:', e)
+    }
+  }
+
   userInfo.value = user
   
   if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {

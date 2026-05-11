@@ -31,7 +31,7 @@
           </view>
           <view class="form-item flex1">
             <text class="form-sublabel">学科门类</text>
-            <picker :range="subjectTypes" @change="onSubjectChange">
+            <picker :range="filteredSubjectTypes" @change="onSubjectChange">
               <view class="picker-value">{{ form.subject_type || '请选择' }}</view>
             </picker>
           </view>
@@ -176,12 +176,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { scoreEstimatorApi } from '@/api/index'
 
 const loading = ref(false)
 const years = ref([])
 const subjectTypes = ref([])
+const allLineOptions = ref([])
 const regionLabels = ['A区', 'B区']
 const categoryLabels = ['学术型', '专业型']
 const regionIndex = ref(0)
@@ -200,6 +201,28 @@ const form = ref({
 
 const result = ref(null)
 
+const filteredSubjectTypes = computed(() => {
+  const matched = allLineOptions.value
+    .filter(item => String(item.year) === String(form.value.year))
+    .filter(item => item.region === form.value.region)
+    .filter(item => item.category === form.value.category)
+    .map(item => item.subject_type)
+
+  return [...new Set(matched.length > 0 ? matched : subjectTypes.value)]
+})
+
+const ensureSubjectType = () => {
+  const options = filteredSubjectTypes.value
+  if (!options.length) {
+    form.value.subject_type = ''
+    return
+  }
+
+  if (!options.includes(form.value.subject_type)) {
+    form.value.subject_type = options[0]
+  }
+}
+
 const levelTag = {
   safe: '稳',
   good: '优',
@@ -211,20 +234,23 @@ const levelTag = {
 
 const onYearChange = (e) => {
   form.value.year = years.value[e.detail.value]
+  ensureSubjectType()
 }
 
 const onRegionChange = (e) => {
   regionIndex.value = e.detail.value
   form.value.region = e.detail.value === 0 ? 'A' : 'B'
+  ensureSubjectType()
 }
 
 const onCategoryChange = (e) => {
   categoryIndex.value = e.detail.value
   form.value.category = e.detail.value === 0 ? 'academic' : 'professional'
+  ensureSubjectType()
 }
 
 const onSubjectChange = (e) => {
-  form.value.subject_type = subjectTypes.value[e.detail.value]
+  form.value.subject_type = filteredSubjectTypes.value[e.detail.value]
 }
 
 const doEstimate = async () => {
@@ -256,7 +282,7 @@ const doEstimate = async () => {
       uni.showToast({ title: res.msg || '评估失败', icon: 'none' })
     }
   } catch (e) {
-    uni.showToast({ title: '网络异常', icon: 'none' })
+    uni.showToast({ title: e?.msg || '网络异常', icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -268,7 +294,9 @@ onMounted(async () => {
     if (res.data) {
       years.value = res.data.years || []
       subjectTypes.value = res.data.subjectTypes || []
+      allLineOptions.value = res.data.lineOptions || []
       if (years.value.length > 0) form.value.year = years.value[0]
+      ensureSubjectType()
     }
   } catch (e) {
     console.error('加载选项失败:', e)

@@ -682,6 +682,15 @@ router.delete('/notifications/:id', adminAuth, async (req, res) => {
   }
 })
 
+router.get('/ads', adminAuth, async (req, res) => {
+  try {
+    const ads = await db.query('SELECT * FROM ads ORDER BY sort_order ASC, created_at DESC')
+    res.json(success(ads))
+  } catch (err) {
+    res.json(error('获取广告列表失败'))
+  }
+})
+
 router.post('/ads', adminAuth, upload.single('image'), async (req, res) => {
   try {
     const { title, link_url, link_type, position, sort_order, start_time, end_time } = req.body

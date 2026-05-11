@@ -1,6 +1,7 @@
 export function getCurrentUser() {
   try {
-    return JSON.parse(uni.getStorageSync('user') || '{}')
+    const user = uni.getStorageSync('user') || uni.getStorageSync('userInfo') || '{}'
+    return typeof user === 'string' ? JSON.parse(user || '{}') : user
   } catch (e) {
     return {}
   }
@@ -9,6 +10,7 @@ export function getCurrentUser() {
 export function setCurrentUser(user) {
   try {
     uni.setStorageSync('user', user)
+    uni.setStorageSync('userInfo', user)
   } catch (e) {
     console.error('保存用户信息失败:', e)
   }
@@ -17,6 +19,7 @@ export function setCurrentUser(user) {
 export function clearCurrentUser() {
   try {
     uni.removeStorageSync('user')
+    uni.removeStorageSync('userInfo')
   } catch (e) {
     console.error('清除用户信息失败:', e)
   }
@@ -69,5 +72,4 @@ export function clearTokens() {
 export function clearAllAuth() {
   clearTokens()
   clearCurrentUser()
-  uni.removeStorageSync('userInfo')
 }

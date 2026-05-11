@@ -10,10 +10,15 @@ const db = require('../utils/db')
 const { success, error } = require('../utils/response')
 const { auth } = require('../middleware/auth')
 
+const normalizeText = (value) => String(value || '').trim()
+
 router.get('/options', async (req, res) => {
   try {
     const years = await db.query('SELECT DISTINCT year FROM national_lines ORDER BY year DESC')
-    const subjectTypes = await db.query('SELECT DISTINCT subject_type FROM national_lines ORDER BY subject_type')
+    const lineOptions = await db.query(
+      'SELECT DISTINCT year, region, category, subject_type FROM national_lines ORDER BY year DESC, region ASC, category ASC, subject_type ASC'
+    )
+    const subjectTypes = [...new Set(lineOptions.map(s => s.subject_type))]
 
     let studentStats = null
     try {
@@ -38,7 +43,8 @@ router.get('/options', async (req, res) => {
 
     res.json(success({
       years: years.map(y => y.year),
-      subjectTypes: subjectTypes.map(s => s.subject_type),
+      subjectTypes,
+      lineOptions,
       studentStats: studentStats || []
     }))
   } catch (err) {
@@ -63,13 +69,27 @@ router.post('/estimate', async (req, res) => {
       return res.json(error('请至少输入一科成绩'))
     }
 
-    const nationalLine = await db.query(
-      `SELECT * FROM national_lines WHERE year=? AND region=? AND category=? AND subject_type=?`,
-      [year, region, category, subject_type]
+    let nationalLine = await db.query(
+      `SELECT * FROM national_lines WHERE year=? AND region=? AND category=? AND TRIM(subject_type)=?`,
+      [year, region, category, normalizeText(subject_type)]
     )
 
     if (!nationalLine || nationalLine.length === 0) {
-      return res.json(error('暂无该年份的国家线数据'))
+      nationalLine = await db.query(
+        `SELECT * FROM national_lines WHERE year=? AND region=? AND TRIM(subject_type)=? ORDER BY category=? DESC LIMIT 1`,
+        [year, region, normalizeText(subject_type), category]
+      )
+    }
+
+    if (!nationalLine || nationalLine.length === 0) {
+      const available = await db.query(
+        `SELECT category, subject_type FROM national_lines WHERE year=? AND region=? ORDER BY category ASC, subject_type ASC LIMIT 8`,
+        [year, region]
+      )
+      const suffix = available.length > 0
+        ? `，请检查类别和学科门类是否匹配。当前年份可选示例：${available.map(i => `${i.category === 'academic' ? '学术型' : '专业型'}-${i.subject_type}`).join('、')}`
+        : ''
+      return res.json(error(`暂无匹配的国家线数据${suffix}`))
     }
 
     const line = nationalLine[0]
