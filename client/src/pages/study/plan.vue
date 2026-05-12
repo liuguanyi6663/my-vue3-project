@@ -159,8 +159,8 @@ const isToday = computed(() => {
 })
 
 const getSubjectClass = (subject) => {
-  const map = { '英语': 'english', '政治': 'politics', '数学': 'math', '综合': 'comprehensive' }
-  return map[subject] || subject
+  const map = { '英语': 'english', '政治': 'politics', '数学': 'math', '数学/专业课': 'math', '综合': 'comprehensive' }
+  return map[subject] || 'default'
 }
 
 const loadPlans = async () => {
@@ -463,6 +463,7 @@ onMounted(() => {
 .tag-politics { background: #ff3b30; }
 .tag-math { background: #07c160; }
 .tag-comprehensive { background: #ff9500; }
+.tag-default { background: #8e8e93; }
 
 .priority-dot {
   width: 12rpx;

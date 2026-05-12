@@ -724,3 +724,192 @@ router.delete('/admin/batch-by-year/:year', adminAuth, async (req, res) => {
 })
 
 module.exports = router
+
+// ─── 自动爬取定时任务 ─────────────────────────────────────
+
+/**
+ * 精准发现指定年份国家线页面URL（不再遍历所有年）
+ */
+const discoverSingleYearUrl = async (year) => {
+  const candidateUrls = [
+    `https://yz.chsi.com.cn/kyzx/zt/lnfsx${year}.shtml`
+  ]
+
+  for (const topicUrl of candidateUrls) {
+    try {
+      const html = await fetchPage(topicUrl)
+      if (!html || (html.includes('404') && html.length < 5000)) continue
+
+      const yearListMatch = html.match(/var yearList\s*=\s*\[([\s\S]*?)\];/)
+      if (yearListMatch) {
+        const items = yearListMatch[1].match(/\{[^}]+\}/g) || []
+        for (const item of items) {
+          const ym = item.match(/year:\s*'(\d+)'/)
+          const um = item.match(/url:\s*'([^']+)'/)
+          if (ym && um && parseInt(ym[1]) === year) {
+            const kydtUrl = um[1]
+            const kydtHtml = await fetchPage(kydtUrl)
+            if (!kydtHtml) continue
+
+            const kpLinks = []
+            const re = /href="((?:https?:\/\/yz\.chsi\.com\.cn)?\/kyzx\/kp\/[^"]+\.html)"/g
+            let m
+            while ((m = re.exec(kydtHtml)) !== null) {
+              const fullUrl = m[1].startsWith('http') ? m[1] : 'https://yz.chsi.com.cn' + m[1]
+              if (!kpLinks.includes(fullUrl)) kpLinks.push(fullUrl)
+            }
+            if (kpLinks.length > 0) return kpLinks
+
+            const bodyText = kydtHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')
+            if (bodyText.includes('学科门类')) {
+              return [kydtUrl]
+            }
+          }
+        }
+      }
+
+      const bodyText = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')
+      if (bodyText.includes('学科门类') && (bodyText.includes('专业学位类别') || bodyText.includes('专业学位名称') || bodyText.includes('A区'))) {
+        return [topicUrl]
+      }
+    } catch (e) {
+      console.log(`  discoverSingleYearUrl(${year}): ${e.message}`)
+    }
+  }
+
+  // fallback
+  const fallbacks = [
+    `https://yz.chsi.com.cn/kyzx/kp/${year}02/${year}0224/2293352975.html`,
+    `https://yz.chsi.com.cn/kyzx/kp/${year}02/${year}0224/2293352976.html`,
+    `https://yz.chsi.com.cn/kyzx/kp/${year}03/${year}0312/2293269492.html`,
+    `https://yz.chsi.com.cn/kyzx/kp/${year}03/${year}0312/2293269493.html`
+  ]
+
+  for (const url of fallbacks) {
+    try {
+      const html = await fetchPage(url)
+      if (html && html.length > 500 && !(html.includes('404') && html.includes('出错了'))) {
+        return [url]
+      }
+    } catch (e) {}
+  }
+
+  return []
+}
+
+/**
+ * 自动爬取指定年份数据（如果数据库中还没有）
+ */
+async function autoCrawlYear(targetYear) {
+  const existing = await db.query('SELECT COUNT(*) as cnt FROM national_lines WHERE year=?', [targetYear])
+  if (existing[0].cnt > 0) {
+    console.log(`[自动爬取] ${targetYear}年国家线数据已存在（${existing[0].cnt} 条），跳过`)
+    return { skipped: true, year: targetYear, reason: '已存在' }
+  }
+
+  console.log(`[自动爬取] 尝试获取 ${targetYear} 年国家线数据...`)
+
+  let urls = []
+  try {
+    urls = await discoverSingleYearUrl(targetYear)
+  } catch (e) {
+    console.log(`[自动爬取] URL发现失败: ${e.message}`)
+  }
+
+  if (urls.length === 0) {
+    const presetUrls = CRAWL_URLS[targetYear]
+    if (presetUrls) urls = presetUrls
+  }
+
+  if (urls.length === 0) {
+    console.log(`[自动爬取] ${targetYear}年未找到爬取地址，可能尚未发布`)
+    return { skipped: true, year: targetYear, reason: 'URL不可用' }
+  }
+
+  let allParsed = []
+  for (const url of urls) {
+    try {
+      const html = await fetchPage(url)
+      if (!html || html.length < 100) continue
+      if (html.includes('404') && html.includes('出错了')) continue
+
+      const parsed = parseNationalLine(html, targetYear)
+      allParsed.push(...parsed)
+    } catch (e) {
+      console.log(`[自动爬取] 页面解析失败 ${url}: ${e.message}`)
+    }
+  }
+
+  const seen = new Set()
+  allParsed = allParsed.filter(r => {
+    const key = `${r.year}-${r.region}-${r.category}-${r.subject_type}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  if (allParsed.length === 0) {
+    console.log(`[自动爬取] ${targetYear}年未能解析出数据`)
+    return { skipped: true, year: targetYear, reason: '解析失败' }
+  }
+
+  let inserted = 0, updated = 0
+  for (const item of allParsed) {
+    const exist = await db.query(
+      'SELECT id FROM national_lines WHERE year=? AND region=? AND category=? AND subject_type=?',
+      [item.year, item.region, item.category, item.subject_type]
+    )
+    if (exist.length > 0) {
+      await db.query(
+        'UPDATE national_lines SET total_score=?, politics_score=?, foreign_score=?, subject1_score=?, subject2_score=? WHERE id=?',
+        [item.total_score, item.politics_score, item.foreign_score, item.subject1_score, item.subject2_score, exist[0].id]
+      )
+      updated++
+    } else {
+      await db.query(
+        'INSERT INTO national_lines (year, region, category, subject_type, total_score, politics_score, foreign_score, subject1_score, subject2_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item.year, item.region, item.category, item.subject_type, item.total_score, item.politics_score, item.foreign_score, item.subject1_score, item.subject2_score]
+      )
+      inserted++
+    }
+  }
+
+  console.log(`[自动爬取] ${targetYear}年完成：新增 ${inserted} 条，更新 ${updated} 条`)
+  return { year: targetYear, inserted, updated }
+}
+
+/**
+ * 启动自动爬取任务
+ * - 3-5月每6小时检查一次（国家线通常在3月中旬发布）
+ * - 其他时间每天检查一次
+ */
+function startNationalLineAutoCrawl() {
+  const check = async () => {
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const targetYear = now.getFullYear()
+    const checkYear = month < 3 ? targetYear - 1 : targetYear
+    try {
+      await autoCrawlYear(checkYear)
+    } catch (e) {
+      console.error('[自动爬取] 任务执行失败:', e.message)
+    }
+  }
+
+  setTimeout(() => { check() }, 5000)
+
+  const scheduleNext = () => {
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const interval = (month >= 3 && month <= 5) ? 6 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+    setTimeout(() => {
+      check().finally(() => scheduleNext())
+    }, interval)
+  }
+
+  scheduleNext()
+  console.log('[自动爬取] 国家线自动爬取任务已启动')
+}
+
+module.exports = router
+module.exports.startNationalLineAutoCrawl = startNationalLineAutoCrawl

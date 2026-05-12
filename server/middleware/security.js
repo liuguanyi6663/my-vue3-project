@@ -87,10 +87,10 @@ const sanitizeDeep = (obj) => {
 
 const sanitizeMiddleware = (req, res, next) => {
   if (req.body) {
-    req.body = sanitizeDeep(req.body)
+    req.body = sanitizeDeep({ ...req.body })
   }
   if (req.query) {
-    req.query = sanitizeDeep(req.query)
+    req.query = sanitizeDeep({ ...req.query })
   }
   next()
 }

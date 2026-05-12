@@ -23,13 +23,13 @@ page {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* 页面切换加载遮罩 */
+/* 页面切换加载遮罩（适配所有机型，含刘海屏/灵动岛） */
 .page-loading-mask {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;

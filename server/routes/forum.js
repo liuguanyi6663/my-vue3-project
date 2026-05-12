@@ -20,9 +20,9 @@ router.get('/posts', optionalAuth, async (req, res) => {
 
     let sql = `SELECT p.*, u.nickname as author_name, u.avatar as author_avatar, u.is_landed as author_is_landed,
                CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
-               FROM forum_posts p 
-               LEFT JOIN users u ON p.user_id=u.id 
-               WHERE p.status=1`
+               FROM forum_posts p
+               LEFT JOIN users u ON p.user_id=u.id
+               WHERE p.status=1 AND p.audit_status='approved'`
     const listParams = []
 
     if (category) {
@@ -47,7 +47,7 @@ router.get('/posts', optionalAuth, async (req, res) => {
 
     const list = await db.query(sql, listParams)
     
-    let countSql = `SELECT COUNT(*) as total FROM forum_posts p WHERE p.status=1`
+    let countSql = `SELECT COUNT(*) as total FROM forum_posts p WHERE p.status=1 AND p.audit_status='approved'`
     const countParams = []
     if (category) {
       countSql += ' AND p.category=?'
@@ -259,8 +259,8 @@ router.post('/posts', auth, async (req, res) => {
     const finalIsAnonymous = category === 'treehole' ? 1 : (is_anonymous ? 1 : 0)
 
     const result = await db.query(
-      `INSERT INTO forum_posts (user_id, category, title, content, images, tags, is_anonymous, audit_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved')`,
+      `INSERT INTO forum_posts (user_id, category, title, content, images, tags, is_anonymous, audit_status, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 1)`,
       [req.user.id, category, title, content, JSON.stringify(images || []), JSON.stringify(tags || []), finalIsAnonymous]
     )
 
@@ -314,7 +314,8 @@ router.post('/posts/:id/like', auth, async (req, res) => {
     if (existing.length > 0) {
       await db.query('DELETE FROM forum_likes WHERE id=?', [existing[0].id])
       await db.query('UPDATE forum_posts SET like_count=GREATEST(like_count-1,0) WHERE id=?', [req.params.id])
-      res.json(success({ isLiked: false, likeCount: Math.max(0, (await db.query('SELECT like_count FROM forum_posts WHERE id=?', [req.params.id]))[0].like_count - 1) }, '已取消点赞'))
+      const post = await db.query('SELECT like_count FROM forum_posts WHERE id=?', [req.params.id])
+      res.json(success({ isLiked: false, likeCount: post[0].like_count }, '已取消点赞'))
     } else {
       await db.query(
         'INSERT INTO forum_likes (user_id, target_id, target_type) VALUES (?, ?, "post")',
@@ -444,7 +445,7 @@ router.post('/comments/:id/report', auth, async (req, res) => {
 
     await db.query(
       'INSERT INTO reports (reporter_id, target_type, target_id, reason, description) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, 'forum_comment', req.params.id, reason, description || '']
+      [req.user.id, 'comment', req.params.id, reason, description || '']
     )
 
     res.json(success(null, '举报成功，我们会尽快处理'))
@@ -548,43 +549,7 @@ router.get('/favorites', auth, async (req, res) => {
   }
 })
 
-router.get('/test-favorites', async (req, res) => {
-  try {
-    console.log('=== 测试收藏接口 - 开始 ===')
-    
-    const testUserId = 1
-    console.log('测试用户ID:', testUserId)
-    
-    console.log('1. 查询收藏总数...')
-    const totalResult = await db.query(
-      'SELECT COUNT(*) as total FROM forum_favorites WHERE user_id=?',
-      [testUserId]
-    )
-    console.log('总数结果:', totalResult)
-
-    console.log('2. 查询收藏列表...')
-    const list = await db.query(
-      `SELECT p.*, ff.created_at as favorited_at,
-       CASE WHEN p.is_anonymous=1 THEN '匿名用户' ELSE u.nickname END as display_name
-       FROM forum_favorites ff 
-       INNER JOIN forum_posts p ON ff.post_id=p.id 
-       LEFT JOIN users u ON p.user_id=u.id 
-       WHERE ff.user_id=? AND p.status=1
-       ORDER BY ff.created_at DESC LIMIT 10 OFFSET 0`,
-      [testUserId]
-    )
-    console.log('列表结果:', list)
-
-    const response = pageSuccess(list, totalResult[0].total, 1, 10)
-    console.log('响应:', response)
-
-    res.json(response)
-  } catch (err) {
-    console.error('=== 测试收藏接口 - 失败 ===')
-    console.error('错误:', err)
-    res.json({ code: 500, msg: '测试失败: ' + err.message, data: null })
-  }
-})
+// @deleted: 移除开发期测试端点 /test-favorites（硬编码 userId=1 存在安全风险）
 
 router.get('/my-posts', auth, async (req, res) => {
   try {

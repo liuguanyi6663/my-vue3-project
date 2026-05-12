@@ -5,8 +5,9 @@ const getCurrentYear = () => getTimeSeed().getFullYear()
 const getRecentYears = (n = 4) => {
   const current = getCurrentYear()
   const years = []
-  for (let i = 1; i >= -(n - 2); i--) {
-    years.push(current + i)
+  // 返回 [current+1, current, current-1, current-2] 等
+  for (let offset = 1; offset > 1 - n; offset--) {
+    years.push(current + offset)
   }
   return years
 }

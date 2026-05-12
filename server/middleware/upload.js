@@ -181,6 +181,26 @@ function createSafeUpload(options = {}) {
   ]
 }
 
+// 包装 upload.single 以自动添加文件扫描
+const originalSingle = upload.single.bind(upload)
+upload.single = function (fieldName) {
+  return [
+    originalSingle(fieldName),
+    (req, res, next) => {
+      if (!req.file) return next()
+      const scanResult = scanFile(req.file.path, req.file.originalname)
+      if (!scanResult.safe) {
+        try { fs.unlinkSync(req.file.path) } catch (e) {}
+        return res.json({ code: 400, msg: scanResult.reason, data: null })
+      }
+      req.fileScanResult = scanResult
+      req.file.safeOriginalname = scanResult.sanitizedName
+      next()
+    },
+    handleMulterError
+  ]
+}
+
 module.exports = upload
 module.exports.upload = upload
 module.exports.safeUpload = createSafeUpload

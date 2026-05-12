@@ -258,8 +258,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     })
 
     const result = await db.query(
-      `INSERT INTO materials (category_id, title, description, file_name, file_path, file_size, file_type, uploader_id, year, audit_status, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 1)`,
+      `INSERT INTO materials (category_id, title, description, file_name, file_path, file_size, file_type, uploader_id, year, audit_status, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)`,
       [category_id, title, description || '', req.file.originalname, '/uploads/' + req.file.filename,
        req.file.size, fileType, req.user.id, normalizedYear]
     )
@@ -483,8 +483,9 @@ router.post('/:id/like', auth, async (req, res) => {
     
     if (existing.length > 0) {
       await db.query('DELETE FROM material_likes WHERE id=?', [existing[0].id])
-      await db.query('UPDATE materials SET like_count=like_count-1 WHERE id=?', [req.params.id])
-      res.json(success({ isLiked: false, likeCount: Math.max(0, (await db.query('SELECT like_count FROM materials WHERE id=?', [req.params.id]))[0].like_count - 1) }, '已取消点赞'))
+      await db.query('UPDATE materials SET like_count=GREATEST(like_count-1,0) WHERE id=?', [req.params.id])
+      const row = await db.query('SELECT like_count FROM materials WHERE id=?', [req.params.id])
+      res.json(success({ isLiked: false, likeCount: row[0].like_count }, '已取消点赞'))
     } else {
       await db.query(
         'INSERT INTO material_likes (user_id, material_id) VALUES (?, ?)',

@@ -30,16 +30,32 @@ const config = require('./config/index')
 
 const app = express()
 
-if (!config.jwt.secret || !config.jwt.refreshSecret) {
+const JWT_PLACEHOLDER_PATTERNS = [
+  'your_jwt_secret',
+  'your_jwt_refresh_secret',
+  'replace_in_production',
+  'generate_with_openssl'
+]
+
+function isPlaceholderSecret(secret) {
+  if (!secret) return true
+  return JWT_PLACEHOLDER_PATTERNS.some(p => secret.toLowerCase().includes(p))
+}
+
+if (isPlaceholderSecret(config.jwt.secret) || isPlaceholderSecret(config.jwt.refreshSecret)) {
   const env = process.env.NODE_ENV || 'development'
   if (env === 'production') {
-    console.error('[FATAL] JWT_SECRET and JWT_REFRESH_SECRET must be set in .env for production')
+    console.error('[FATAL] JWT_SECRET and JWT_REFRESH_SECRET must be set to real values in .env for production')
     process.exit(1)
   }
-  console.warn('[WARN] JWT_SECRET / JWT_REFRESH_SECRET not set in .env')
+  console.warn('[WARN] JWT_SECRET / JWT_REFRESH_SECRET not properly configured in .env')
   console.warn('[WARN] Using auto-generated keys for development only. NEVER use in production!')
-  config.jwt.secret = config.jwt.secret || require('crypto').randomBytes(32).toString('hex')
-  config.jwt.refreshSecret = config.jwt.refreshSecret || require('crypto').randomBytes(32).toString('hex')
+  config.jwt.secret = config.jwt.secret && !isPlaceholderSecret(config.jwt.secret)
+    ? config.jwt.secret
+    : require('crypto').randomBytes(32).toString('hex')
+  config.jwt.refreshSecret = config.jwt.refreshSecret && !isPlaceholderSecret(config.jwt.refreshSecret)
+    ? config.jwt.refreshSecret
+    : require('crypto').randomBytes(32).toString('hex')
 }
 
 const getAllowedOrigins = () => {
@@ -60,8 +76,8 @@ app.use(cors({
   },
   credentials: true
 }))
-app.use(express.json({ limit: '50mb' }))
-app.use(express.urlencoded({ extended: true, limit: '50mb' }))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 app.use(securityHeaders)
 app.use(rateLimiter({ windowMs: 60 * 1000, max: 200 }))
@@ -141,6 +157,7 @@ app.use(globalErrorHandler)
 const initDatabase = require('./utils/init-db')
 const { startCleanupJob } = require('./utils/accountCleanup')
 const { startTimelineReminderJob } = require('./utils/timelineReminder')
+const { startNationalLineAutoCrawl } = require('./routes/national-line')
 
 const startServer = async () => {
   try {
@@ -150,6 +167,7 @@ const startServer = async () => {
     setupSwagger(app)
     startCleanupJob()
     startTimelineReminderJob()
+    startNationalLineAutoCrawl()
     logger.info('系统初始化完成')
 
     app.listen(config.port, () => {

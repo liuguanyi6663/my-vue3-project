@@ -35,6 +35,9 @@ export default { name: 'HomeSkeleton' }
 <style scoped>
 .page {
   padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
 }
 
 .status-bar-skeleton {

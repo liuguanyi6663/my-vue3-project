@@ -150,6 +150,8 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
     await db.query('DELETE FROM ai_records WHERE user_id=?', [userId])
     await db.query('DELETE FROM user_timeline_subscriptions WHERE user_id=?', [userId])
     await db.query('DELETE FROM notification_reads WHERE user_id=?', [userId])
+    await db.query('DELETE FROM user_blocks WHERE user_id=? OR blocked_user_id=?', [userId, userId])
+    await db.query('DELETE FROM user_deleted_conversations WHERE user_id=? OR other_user_id=?', [userId, userId])
 
     await db.query('DELETE FROM users WHERE id=?', [userId])
 
@@ -985,7 +987,6 @@ router.get('/kaoyan-export', adminAuth, async (req, res) => {
 
     sheet.columns = headerRow
 
-    sheet.getRow(1).font = { bold: true, size: 12 }
     sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
     sheet.getRow(1).fill = {
       type: 'pattern',

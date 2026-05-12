@@ -25,7 +25,18 @@ async function deleteAllUserData(userId) {
     // 删除下载日志
     await connection.query('DELETE FROM download_logs WHERE user_id = ?', [userId])
     
-    // 删除用户上传的资料
+    // 删除用户上传的资料（先清理关联数据）
+    const userMaterials = await connection.query('SELECT id FROM materials WHERE uploader_id = ?', [userId])
+    for (const mat of userMaterials) {
+      await connection.query('DELETE FROM material_likes WHERE material_id = ?', [mat.id])
+      await connection.query('DELETE FROM material_favorites WHERE material_id = ?', [mat.id])
+      await connection.query('DELETE FROM download_logs WHERE material_id = ?', [mat.id])
+      const matReviewIds = await connection.query('SELECT id FROM material_reviews WHERE material_id = ?', [mat.id])
+      for (const rid of matReviewIds) {
+        await connection.query('DELETE FROM review_likes WHERE review_id = ?', [rid.id])
+      }
+      await connection.query('DELETE FROM material_reviews WHERE material_id = ?', [mat.id])
+    }
     await connection.query('DELETE FROM materials WHERE uploader_id = ?', [userId])
     
     // 删除论坛帖子点赞
@@ -77,9 +88,14 @@ async function deleteAllUserData(userId) {
     // 删除用户反馈
     await connection.query('DELETE FROM feedbacks WHERE user_id = ?', [userId])
     
-    // 删除用户屏蔽关系
+    // 删除屏蔽关系
     await connection.query('DELETE FROM user_blocks WHERE user_id = ? OR blocked_user_id = ?', [userId, userId])
-    
+
+    // 删除对话删除记录（表可能不存在）
+    try {
+      await connection.query('DELETE FROM user_deleted_conversations WHERE user_id = ? OR other_user_id = ?', [userId, userId])
+    } catch (e) {}
+
     // 最后删除用户
     await connection.query('DELETE FROM users WHERE id = ?', [userId])
     

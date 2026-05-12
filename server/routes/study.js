@@ -40,20 +40,25 @@ const buildStreakStats = (dateRows) => {
     }
   }
 
+  // 当前连续 = 从最近一次打卡日期往前数，断一天就归零
   const today = getTodayStr()
+  const lastDate = dateStrings[0] // dateStrings 是 DESC 排序，第一个就是最近
+  const diffToToday = getDateDiffDays(today, lastDate)
+
+  // 最近打卡如果是今天或昨天，连续打卡还在有效期内
+  if (diffToToday > 1) {
+    return { currentStreak: 0, maxStreak }
+  }
+
   const dateSet = new Set(dateStrings)
   let currentStreak = 0
-  let cursor = today
+  let cursor = lastDate // 从最近打卡日开始往前数
 
   while (dateSet.has(cursor)) {
     currentStreak += 1
     const cursorDate = parseDateOnly(cursor)
     cursorDate.setDate(cursorDate.getDate() - 1)
     cursor = formatLocalDate(cursorDate)
-  }
-
-  if (currentStreak === 0) {
-    currentStreak = maxStreak
   }
 
   return { currentStreak, maxStreak }
@@ -315,8 +320,41 @@ router.get('/templates', async (req, res) => {
 router.post('/apply-template', auth, async (req, res) => {
   try {
     const { template_type, date } = req.body
-    const templatesRes = await fetch('http://localhost:3000/api/study/templates')
-    const { data: templates } = await templatesRes.json()
+
+    // 内联模板定义，避免通过HTTP自调用
+    const templates = [
+      {
+        type: 'basic',
+        name: '基础阶段模板',
+        tasks: [
+          { subject: '英语', task_name: '背单词', plan_duration: 30, priority: 'high' },
+          { subject: '英语', task_name: '阅读理解', plan_duration: 60, priority: 'high' },
+          { subject: '政治', task_name: '知识点学习', plan_duration: 45, priority: 'medium' },
+          { subject: '数学/专业课', task_name: '基础复习', plan_duration: 120, priority: 'high' }
+        ]
+      },
+      {
+        type: 'strengthen',
+        name: '强化阶段模板',
+        tasks: [
+          { subject: '英语', task_name: '真题阅读', plan_duration: 90, priority: 'high' },
+          { subject: '英语', task_name: '作文练习', plan_duration: 45, priority: 'medium' },
+          { subject: '政治', task_name: '选择题刷题', plan_duration: 60, priority: 'medium' },
+          { subject: '数学/专业课', task_name: '强化复习', plan_duration: 150, priority: 'high' }
+        ]
+      },
+      {
+        type: 'sprint',
+        name: '冲刺阶段模板',
+        tasks: [
+          { subject: '英语', task_name: '模拟考试', plan_duration: 180, priority: 'high' },
+          { subject: '政治', task_name: '背诵押题', plan_duration: 90, priority: 'high' },
+          { subject: '数学/专业课', task_name: '查漏补缺', plan_duration: 120, priority: 'high' },
+          { subject: '综合', task_name: '错题回顾', plan_duration: 60, priority: 'medium' }
+        ]
+      }
+    ]
+
     const template = templates.find(t => t.type === template_type)
     
     if (!template) return res.json(error('模板不存在'))
