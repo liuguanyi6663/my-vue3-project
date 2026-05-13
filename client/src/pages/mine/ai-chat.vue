@@ -42,7 +42,7 @@
             <image
               v-if="msg.role === 'assistant'"
               class="msg-avatar msg-avatar-ai"
-              src="/static/ai助手.png"
+              src="http://127.0.0.1:3000/uploads/ai助手.png"
               mode="aspectFill"
             />
             <image

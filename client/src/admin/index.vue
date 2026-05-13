@@ -9,61 +9,61 @@
       <view class="menu-group">
         <text class="group-title">内容管理</text>
         
-        <view class="menu-item" @click="goPage('/pages/admin/reports')">
+        <view class="menu-item" @click="goPage('/admin/reports')">
           <text class="menu-icon">🚫</text>
           <text class="menu-label">举报受理</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/kaoyan-audit')">
+        <view class="menu-item" @click="goPage('/admin/kaoyan-audit')">
           <text class="menu-icon">📝</text>
           <text class="menu-label">考研信息审批</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/kaoyan-export')">
+        <view class="menu-item" @click="goPage('/admin/kaoyan-export')">
           <text class="menu-icon">📊</text>
           <text class="menu-label">考研数据导出</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/notice')">
+        <view class="menu-item" @click="goPage('/admin/notice')">
           <text class="menu-icon">📢</text>
           <text class="menu-label">信息发布</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/screen')">
+        <view class="menu-item" @click="goPage('/admin/screen')">
           <text class="menu-icon">🖥️</text>
           <text class="menu-label">大屏管理</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/national-line')">
+        <view class="menu-item" @click="goPage('/admin/national-line')">
           <text class="menu-icon">📈</text>
           <text class="menu-label">国家线数据修改</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/interview-audit')">
+        <view class="menu-item" @click="goPage('/admin/interview-audit')">
           <text class="menu-icon">📋</text>
           <text class="menu-label">复试资料审批</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/title-audit')">
+        <view class="menu-item" @click="goPage('/admin/title-audit')">
           <text class="menu-icon">🏅</text>
           <text class="menu-label">上岸头衔审批</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/feedback')">
+        <view class="menu-item" @click="goPage('/admin/feedback')">
           <text class="menu-icon">💭</text>
           <text class="menu-label">意见反应栏</text>
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/admin/school-websites')">
+        <view class="menu-item" @click="goPage('/admin/school-websites')">
           <text class="menu-icon">🏫</text>
           <text class="menu-label">学校官网管理</text>
           <text class="menu-arrow">></text>
@@ -73,7 +73,7 @@
       <view class="menu-group">
         <text class="group-title">用户管理</text>
         
-        <view class="menu-item" @click="goPage('/pages/admin/users')">
+        <view class="menu-item" @click="goPage('/admin/users')">
           <text class="menu-icon">👥</text>
           <text class="menu-label">用户列表</text>
           <text class="menu-arrow">></text>

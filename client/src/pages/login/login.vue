@@ -1,7 +1,7 @@
 <template>
   <view class="login-page">
     <!-- 背景图 -->
-    <image class="bg-image" src="/static/images/login-bg.png" mode="aspectFill"></image>
+    <image class="bg-image" src="http://127.0.0.1:3000/uploads/login-bg.jpg" mode="aspectFill"></image>
     
     <!-- 导航栏 -->
     <view class="nav-bar">
@@ -12,7 +12,7 @@
     
     <!-- 品牌区 -->
     <view class="brand-area">
-      <image class="school-logo" src="/static/images/school-logo.png" mode="aspectFit"></image>
+      <image class="school-logo" src="http://127.0.0.1:3000/uploads/school-logo.png" mode="aspectFit"></image>
       <text class="school-name">绍兴理工学院</text>
       <text class="app-name">校内考研助手</text>
       <text class="app-slogan">— 官方校园服务平台 —</text>

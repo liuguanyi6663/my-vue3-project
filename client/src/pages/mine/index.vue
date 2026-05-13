@@ -94,7 +94,7 @@
           <text class="menu-arrow">></text>
         </view>
 
-        <view class="menu-item" @click="goPage('/pages/tools/interview')">
+        <view class="menu-item" @click="goPage('/tools/interview')">
           <text class="menu-icon">🎤</text>
           <text class="menu-label">复试工具箱</text>
           <text class="menu-arrow">></text>
@@ -125,7 +125,7 @@
           <text class="menu-arrow">></text>
         </view>
         
-        <view class="menu-item" v-if="userInfo && (userInfo.role === 'admin' || userInfo.role === 'super_admin')" @click="goPage('/pages/admin/index')">
+        <view class="menu-item" v-if="userInfo && (userInfo.role === 'admin' || userInfo.role === 'super_admin')" @click="goPage('/admin/index')">
           <text class="menu-icon">🛠️</text>
           <text class="menu-label" style="color: #4CAF50;">管理后台</text>
           <text class="menu-arrow">></text>

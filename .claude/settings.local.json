@@ -3,7 +3,22 @@
     "allow": [
       "Bash(npm install *)",
       "Bash(node -e ' *)",
-      "Bash(node migrate-schools.js)"
+      "Bash(node migrate-schools.js)",
+      "Bash(npm ls *)",
+      "Bash(node -e \"try{require\\('sharp'\\);console.log\\('sharp available'\\)}catch\\(e\\){console.log\\('sharp not available'\\)}\")",
+      "Bash(node -e \"const jimp = require\\('jimp'\\); console.log\\('jimp version:', jimp.version || 'available'\\)\")",
+      "Bash(node -e \"const j = require\\('./src/pages.json'\\); console.log\\('Main pages:', j.pages.length\\); console.log\\('SubPackages:', j.subPackages.length\\); j.subPackages.forEach\\(s => console.log\\(' -', s.root, ':', s.pages.length, 'pages'\\)\\); console.log\\('TabBar pages:', j.tabBar.list.length\\)\")",
+      "Bash(npx uni-app *)",
+      "Bash(npm run *)",
+      "Bash(node *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Read(//c/temp/**)",
+      "Bash(mkdir -p /e/temp)",
+      "Read(//e/temp/**)",
+      "Bash(sort -k5 -rh)",
+      "Bash(git checkout *)",
+      "Bash(echo \"exit code: $?\")"
     ]
   }
 }

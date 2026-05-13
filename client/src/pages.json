@@ -141,59 +141,9 @@
       }
     },
     {
-      "path": "pages/tools/interview",
-      "style": {
-        "navigationBarTitleText": "复试工具箱"
-      }
-    },
-    {
-      "path": "pages/tools/score-estimator",
-      "style": {
-        "navigationBarTitleText": "成绩估算器",
-        "navigationBarBackgroundColor": "#667eea",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/login/login",
       "style": {
         "navigationBarTitleText": "登录"
-      }
-    },
-    {
-      "path": "pages/admin/index",
-      "style": {
-        "navigationBarTitleText": "管理后台"
-      }
-    },
-    {
-      "path": "pages/admin/screen",
-      "style": {
-        "navigationBarTitleText": "大屏管理"
-      }
-    },
-    {
-      "path": "pages/admin/reports",
-      "style": {
-        "navigationBarTitleText": "举报受理"
-      }
-    },
-    {
-      "path": "pages/admin/kaoyan-audit",
-      "style": {
-        "navigationBarTitleText": "考研信息审批"
-      }
-    },
-    {
-      "path": "pages/admin/users",
-      "style": {
-        "navigationBarTitleText": "用户列表"
-      }
-    },
-    {
-      "path": "pages/admin/notice",
-      "style": {
-        "navigationBarTitleText": "信息发布"
       }
     },
     {
@@ -215,18 +165,6 @@
       }
     },
     {
-      "path": "pages/admin/national-line",
-      "style": {
-        "navigationBarTitleText": "国家线数据管理"
-      }
-    },
-    {
-      "path": "pages/admin/interview-audit",
-      "style": {
-        "navigationBarTitleText": "复试资料审批"
-      }
-    },
-    {
       "path": "pages/mine/feedback",
       "style": {
         "navigationBarTitleText": "意见反馈"
@@ -239,41 +177,9 @@
       }
     },
     {
-      "path": "pages/admin/feedback",
-      "style": {
-        "navigationBarTitleText": "意见反应栏"
-      }
-    },
-    {
-      "path": "pages/admin/kaoyan-export",
-      "style": {
-        "navigationBarTitleText": "考研数据导出"
-      }
-    },
-    {
       "path": "pages/mine/title-cert",
       "style": {
         "navigationBarTitleText": "头衔认证"
-      }
-    },
-    {
-      "path": "pages/admin/title-audit",
-      "style": {
-        "navigationBarTitleText": "上岸头衔审批"
-      }
-    },
-    {
-      "path": "pages/tools/school-websites",
-      "style": {
-        "navigationBarTitleText": "学校官网",
-        "navigationBarBackgroundColor": "#667eea",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/admin/school-websites",
-      "style": {
-        "navigationBarTitleText": "学校官网管理"
       }
     },
     {
@@ -281,6 +187,112 @@
       "style": {
         "navigationBarTitleText": "网页浏览"
       }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "admin",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "管理后台"
+          }
+        },
+        {
+          "path": "screen",
+          "style": {
+            "navigationBarTitleText": "大屏管理"
+          }
+        },
+        {
+          "path": "reports",
+          "style": {
+            "navigationBarTitleText": "举报受理"
+          }
+        },
+        {
+          "path": "kaoyan-audit",
+          "style": {
+            "navigationBarTitleText": "考研信息审批"
+          }
+        },
+        {
+          "path": "users",
+          "style": {
+            "navigationBarTitleText": "用户列表"
+          }
+        },
+        {
+          "path": "notice",
+          "style": {
+            "navigationBarTitleText": "信息发布"
+          }
+        },
+        {
+          "path": "national-line",
+          "style": {
+            "navigationBarTitleText": "国家线数据管理"
+          }
+        },
+        {
+          "path": "interview-audit",
+          "style": {
+            "navigationBarTitleText": "复试资料审批"
+          }
+        },
+        {
+          "path": "feedback",
+          "style": {
+            "navigationBarTitleText": "意见反应栏"
+          }
+        },
+        {
+          "path": "kaoyan-export",
+          "style": {
+            "navigationBarTitleText": "考研数据导出"
+          }
+        },
+        {
+          "path": "title-audit",
+          "style": {
+            "navigationBarTitleText": "上岸头衔审批"
+          }
+        },
+        {
+          "path": "school-websites",
+          "style": {
+            "navigationBarTitleText": "学校官网管理"
+          }
+        }
+      ]
+    },
+    {
+      "root": "tools",
+      "pages": [
+        {
+          "path": "interview",
+          "style": {
+            "navigationBarTitleText": "复试工具箱"
+          }
+        },
+        {
+          "path": "score-estimator",
+          "style": {
+            "navigationBarTitleText": "成绩估算器",
+            "navigationBarBackgroundColor": "#667eea",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "school-websites",
+          "style": {
+            "navigationBarTitleText": "学校官网",
+            "navigationBarBackgroundColor": "#667eea",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {
