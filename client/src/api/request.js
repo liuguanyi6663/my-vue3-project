@@ -1,6 +1,7 @@
 import { getToken, getRefreshToken, setTokens as authSetTokens, clearTokens, clearAllAuth } from '@/utils/auth'
+import API_BASE_URL from '@/config'
 
-export const BASE_URL = 'http://127.0.0.1:3000/api'
+export const BASE_URL = `${API_BASE_URL}/api`
 
 let loadingListeners = []
 let requestCount = 0
