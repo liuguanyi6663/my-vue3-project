@@ -96,6 +96,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { userApi } from '@/api/index'
+import { BASE_URL } from '@/api/request'
 import { getAvatarUrl } from '@/utils/url'
 import { getRecentYears } from '@/utils/date'
 import { ensureAuthorize } from '@/utils/authorize'
@@ -154,7 +155,7 @@ const chooseAvatar = async () => {
         uni.showLoading({ title: '上传中...' })
         const uploadRes = await new Promise((resolve, reject) => {
           uni.uploadFile({
-            url: 'http://127.0.0.1:3000/api/user/avatar',
+            url: `${BASE_URL}/user/avatar`,
             filePath: tempFilePath,
             name: 'file',
             header: { Authorization: 'Bearer ' + token },

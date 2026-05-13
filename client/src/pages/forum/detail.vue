@@ -208,7 +208,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { forumApi } from '@/api/index'
-import { getAvatarUrl } from '@/utils/url'
+import { getAvatarUrl, getImageUrl } from '@/utils/url'
 import { formatDate as formatDateUtil } from '@/utils/date'
 
 const post = ref(null)
@@ -512,12 +512,7 @@ const parseImages = (images) => {
     imgList = images
   }
   // 转换为完整URL
-  return imgList.map(img => {
-    if (img && !img.startsWith('http')) {
-      return 'http://127.0.0.1:3000' + img
-    }
-    return img
-  })
+  return imgList.map(img => getImageUrl(img))
 }
 
 const previewImage = (current, urls) => {

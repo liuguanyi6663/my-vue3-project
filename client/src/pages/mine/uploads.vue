@@ -148,6 +148,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { interviewApi, materialApi } from '@/api/index'
+import { BASE_URL } from '@/api/request'
 import { formatDateTime, formatRelativeTime } from '@/utils/date'
 
 const categoryTabs = [
@@ -265,11 +266,11 @@ const downloadUpload = (item) => {
 
   let url = ''
   if (item.source_type === 'material') {
-    url = `http://127.0.0.1:3000/api/material/download/${item.id}`
+    url = `${BASE_URL}/material/download/${item.id}`
   } else if (item.source_type === 'resume') {
-    url = `http://127.0.0.1:3000/api/interview/resume-templates/${item.id}/download`
+    url = `${BASE_URL}/interview/resume-templates/${item.id}/download`
   } else if (item.source_type === 'email') {
-    url = `http://127.0.0.1:3000/api/interview/email-templates/${item.id}/download`
+    url = `${BASE_URL}/interview/email-templates/${item.id}/download`
   }
 
   if (!url) return

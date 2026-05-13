@@ -207,6 +207,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { materialApi } from '@/api/index'
+import { BASE_URL } from '@/api/request'
+import API_BASE_URL from '@/config'
 import { getAvatarUrl } from '@/utils/url'
 import { formatDate as formatDateUtil } from '@/utils/date'
 import { ensureAuthorize } from '@/utils/authorize'
@@ -316,7 +318,7 @@ const downloadMaterial = async () => {
 
     // 下载文件
     const downloadOptions = {
-      url: `http://127.0.0.1:3000/api/material/download/${detail.value.id}`,
+      url: `${BASE_URL}/material/download/${detail.value.id}`,
       header: { 'Authorization': `Bearer ${token}` },
       success: (res) => {
         uni.hideLoading()
@@ -463,7 +465,7 @@ const previewFile = () => {
   const filePath = detail.value.file_path
   
   if (isImageFile(filePath)) {
-    const fileUrl = 'http://127.0.0.1:3000' + filePath
+    const fileUrl = API_BASE_URL + filePath
     uni.previewImage({
       urls: [fileUrl],
       current: fileUrl
@@ -473,7 +475,7 @@ const previewFile = () => {
   
   uni.showLoading({ title: '加载预览...' })
   
-  const fileUrl = 'http://127.0.0.1:3000' + filePath
+  const fileUrl = API_BASE_URL + filePath
   uni.downloadFile({
     url: fileUrl,
     header: token ? { 'Authorization': `Bearer ${token}` } : {},

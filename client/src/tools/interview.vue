@@ -212,6 +212,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { interviewApi } from '@/api/index'
+import { BASE_URL } from '@/api/request'
 
 const showOral = ref(false)
 const showResume = ref(false)
@@ -453,7 +454,7 @@ const downloadTemplate = (tpl) => {
     return
   }
   
-  const url = `http://127.0.0.1:3000/api/interview/resume-templates/${tpl.id}/download`
+  const url = `${BASE_URL}/interview/resume-templates/${tpl.id}/download`
   const token = uni.getStorageSync('accessToken')
   
   uni.showLoading({ title: '下载中...' })
@@ -593,7 +594,7 @@ const uploadEmailDoc = () => {
 }
 
 const downloadEmailTemplate = (tpl) => {
-  const url = `http://127.0.0.1:3000/api/interview/email-templates/${tpl.id}/download`
+  const url = `${BASE_URL}/interview/email-templates/${tpl.id}/download`
   const token = uni.getStorageSync('accessToken')
 
   uni.showLoading({ title: '下载中...' })

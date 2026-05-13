@@ -42,7 +42,7 @@
             <image
               v-if="msg.role === 'assistant'"
               class="msg-avatar msg-avatar-ai"
-              src="http://127.0.0.1:3000/uploads/ai助手.png"
+              :src="getImageUrl('/uploads/ai助手.png')"
               mode="aspectFill"
             />
             <image
@@ -138,7 +138,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { aiApi } from '@/api/index'
-import { getAvatarUrl } from '@/utils/url'
+import { getAvatarUrl, getImageUrl } from '@/utils/url'
 import { formatChatTime } from '@/utils/date'
 
 const messages = ref([])

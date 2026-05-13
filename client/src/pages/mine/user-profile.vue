@@ -125,6 +125,7 @@
 import { ref, onMounted } from 'vue'
 import { onReachBottom } from '@dcloudio/uni-app'
 import { userApi, forumApi } from '@/api/index'
+import { getImageUrl, getAvatarUrl } from '@/utils/url'
 import { formatMessageTime } from '@/utils/date'
 
 const userInfo = ref(null)
@@ -192,22 +193,6 @@ const sendMessage = () => {
 const goDetail = (id) => uni.navigateTo({ url: `/pages/forum/detail?id=${id}` })
 
 const formatTime = (timeStr) => formatMessageTime(timeStr)
-
-const getAvatarUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  return 'http://127.0.0.1:3000' + (url.startsWith('/') ? url : '/' + url)
-}
-
-const getImageUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  return 'http://127.0.0.1:3000' + (url.startsWith('/') ? url : '/' + url)
-}
 
 const previewPostImage = (images, index) => {
   const fullUrls = images.map(getImageUrl)

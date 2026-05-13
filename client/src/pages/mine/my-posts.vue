@@ -97,6 +97,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { forumApi } from '@/api/index'
+import { getImageUrl } from '@/utils/url'
 import { formatRelativeTime } from '@/utils/date'
 
 const postList = ref([])
@@ -198,12 +199,6 @@ const confirmDelete = (item) => {
       }
     }
   })
-}
-
-const getImageUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  return 'http://127.0.0.1:3000' + (url.startsWith('/') ? url : '/' + url)
 }
 
 const previewImage = (images, index) => {

@@ -106,7 +106,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { titleCertApi } from '@/api/index'
-import { getAvatarUrl } from '@/utils/url'
+import { getAvatarUrl, getImageUrl } from '@/utils/url'
 
 const list = ref([])
 const stats = ref({ pending: 0, approved: 0, rejected: 0 })
@@ -216,13 +216,6 @@ const handleRevoke = (userId) => {
     }
   })
 }
-
-const getImageUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return 'http://127.0.0.1:3000' + url
-}
-
 const previewImage = (url) => {
   uni.previewImage({
     current: getImageUrl(url),

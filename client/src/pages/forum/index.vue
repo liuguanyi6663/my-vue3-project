@@ -128,7 +128,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { forumApi } from '@/api/index'
-import { getAvatarUrl } from '@/utils/url'
+import { getAvatarUrl, getImageUrl } from '@/utils/url'
 import { formatMessageTime } from '@/utils/date'
 
 const tabs = [
@@ -331,15 +331,6 @@ const deletePost = async (item) => {
 const formatTime = (timeStr) => formatMessageTime(timeStr)
 
 // 处理图片 URL，确保完整路径
-const getImageUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  // 拼接本地服务器地址
-  return 'http://127.0.0.1:3000' + (url.startsWith('/') ? url : '/' + url)
-}
-
 // 预览列表页图片
 const previewPostImage = (images, index) => {
   // 把所有图片路径转成完整 URL

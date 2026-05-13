@@ -48,7 +48,7 @@
       <view class="user-list" v-else>
         <view class="user-item" v-for="item in users" :key="item.id">
           <view class="user-top">
-            <image class="user-avatar" :src="avatarUrl(item.avatar)" mode="aspectFill" />
+            <image class="user-avatar" :src="getImageUrl(item.avatar)" mode="aspectFill" />
             <view class="user-basic">
               <view class="user-name-row">
                 <text class="user-nickname">{{ item.nickname || '未设置' }}</text>
@@ -185,6 +185,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/index'
+import { getImageUrl } from '@/utils/url'
 import { getCurrentYear, formatDate as formatDateUtil } from '@/utils/date'
 
 const currentYear = getCurrentYear()
@@ -214,12 +215,6 @@ const isSuperAdmin = computed(() => currentUser.value && currentUser.value.role 
 const loadCurrentUser = () => {
   const user = uni.getStorageSync('userInfo')
   currentUser.value = user
-}
-
-const avatarUrl = (avatar) => {
-  if (!avatar) return '/static/logo.png'
-  if (avatar.startsWith('http')) return avatar
-  return 'http://127.0.0.1:3000' + avatar
 }
 
 const loadUsers = async () => {

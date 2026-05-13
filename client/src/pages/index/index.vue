@@ -8,7 +8,7 @@
       <!-- 顶部状态栏 -->
       <view class="status-bar">
         <!-- 背景图片 -->
-        <image class="status-background" src="http://127.0.0.1:3000/uploads/顶部背景.jpg" mode="aspectFill"></image>
+        <image class="status-background" :src="getImageUrl('/uploads/顶部背景.jpg')" mode="aspectFill"></image>
         <!-- 校徽和学校名称 -->
         <view class="school-logo-title">
           <image class="school-logo" src="/static/sxlglogo.png" mode="aspectFit"></image>
@@ -51,32 +51,32 @@
       <view class="quick-entry card">
         <view class="entry-grid">
           <view class="entry-item" @click="navigateToPage('/pages/national-line/index')">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/国家线.jpg" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/国家线.jpg')" mode="aspectFit"></image>
             <text class="entry-title">国家线</text>
             <text class="entry-subtitle">查看最新分数线</text>
           </view>
           <view class="entry-item" @click="navigateToPage('/tools/school-websites')">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/学校官网.jpg" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/学校官网.jpg')" mode="aspectFit"></image>
             <text class="entry-title">学校官网</text>
             <text class="entry-subtitle">了解学校最新资讯</text>
           </view>
           <view class="entry-item" @click="navigateToPage('/pages/data/dashboard')">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/本校考研数据.jpg" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/本校考研数据.jpg')" mode="aspectFit"></image>
             <text class="entry-title">本校考研数据</text>
             <text class="entry-subtitle">历年报录分析</text>
           </view>
           <view class="entry-item" @click="navigateToPage('/tools/interview')">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/复试工具箱.jpg" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/复试工具箱.jpg')" mode="aspectFit"></image>
             <text class="entry-title">复试工具箱</text>
             <text class="entry-subtitle">面试问题/材料模板</text>
           </view>
           <view class="entry-item" @click="goToAiChat">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/ai助手.png" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/ai助手.png')" mode="aspectFit"></image>
             <text class="entry-title">AI助手</text>
             <text class="entry-subtitle">智能解答考研问题</text>
           </view>
           <view class="entry-item" @click="navigateToPage('/tools/score-estimator')">
-            <image class="entry-icon" src="http://127.0.0.1:3000/uploads/成绩估算.jpg" mode="aspectFit"></image>
+            <image class="entry-icon" :src="getImageUrl('/uploads/成绩估算.jpg')" mode="aspectFit"></image>
             <text class="entry-title">成绩估算</text>
             <text class="entry-subtitle">初步预估考研成绩</text>
           </view>
@@ -86,7 +86,7 @@
       <!-- 考研时间线 -->
       <view class="timeline-section card">
         <!-- 背景图片 -->
-        <image class="timeline-background" src="http://127.0.0.1:3000/uploads/时间线背景.jpg" mode="aspectFill"></image>
+        <image class="timeline-background" :src="getImageUrl('/uploads/时间线背景.jpg')" mode="aspectFill"></image>
         <view class="timeline-header">
           <text class="timeline-year">{{ currentYear }}</text>
           <text class="timeline-label">Year</text>
@@ -226,6 +226,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { homeApi, studyApi, forumApi } from '@/api/index'
 import { getCurrentYear, getKaoyanYear, getKaoyanTargetDate, formatRelativeTime, getTimeSeed } from '@/utils/date'
 import { navigateTo, switchTab } from '@/utils/loading.js'
+import { getImageUrl } from '@/utils/url'
 import HomeSkeleton from '@/components/Skeleton/HomeSkeleton.vue'
 
 const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -244,9 +245,9 @@ const dailyQuote = ref('进德修业')
 const ads = ref([])
 // 初始就设置本地图片，避免闪烁
 const screens = ref([
-  { id: 1, name: '', image_url: 'http://127.0.0.1:3000/uploads/first.png' },
-  { id: 2, name: '', image_url: 'http://127.0.0.1:3000/uploads/second.png' },
-  { id: 3, name: '', image_url: 'http://127.0.0.1:3000/uploads/third.png' }
+  { id: 1, name: '', image_url: '/uploads/first.png' },
+  { id: 2, name: '', image_url: '/uploads/second.png' },
+  { id: 3, name: '', image_url: '/uploads/third.png' }
 ])
 const notifications = ref([])
 const notificationLoading = ref(false)
@@ -284,20 +285,6 @@ const goCheckin = () => {
 
 const goToAiChat = () => {
   navigateTo({ url: '/pages/mine/ai-chat' })
-}
-
-const getImageUrl = (imageUrl) => {
-  if (!imageUrl) return ''
-  // 检查是否已经是完整的URL
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl
-  }
-  // 检查是否是本地static图片（以/static开头）
-  if (imageUrl.startsWith('/static')) {
-    return imageUrl
-  }
-  // 拼接完整的服务器URL
-  return 'http://127.0.0.1:3000' + imageUrl
 }
 
 const goPostDetail = (id) => {

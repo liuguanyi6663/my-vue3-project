@@ -514,6 +514,9 @@ INSERT INTO `sensitive_words` (`word`, `category`) VALUES
 ('卖答案', '诈骗'),
 ('QQ群', '引流');
 
+INSERT INTO `users` (`username`, `password`, `phone`, `nickname`, `role`, `status`) VALUES
+('admin', '$2b$10$ivgSZgZsdJwS5UUByK/jJ.te7ecdumLywW9sIYyuVYeEhYNu/cnKq', '15900000000', '超级管理员', 'super_admin', 1);
+
 INSERT INTO `national_lines` (`year`, `region`, `category`, `subject_type`, `total_score`, `politics_score`, `foreign_score`, `subject1_score`, `subject2_score`) VALUES
 (2025, 'A', 'academic', '哲学', 321, 39, 39, 59, 59),
 (2025, 'A', 'academic', '经济学', 323, 40, 40, 60, 60),

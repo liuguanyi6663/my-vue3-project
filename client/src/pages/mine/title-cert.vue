@@ -71,6 +71,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { titleCertApi } from '@/api/index'
+import { getImageUrl } from '@/utils/url'
 import { ensureAuthorize } from '@/utils/authorize'
 
 const screenshotPath = ref('')
@@ -150,13 +151,6 @@ const submitApply = async () => {
     submitting.value = false
   }
 }
-
-const getImageUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return 'http://127.0.0.1:3000' + url
-}
-
 const previewImage = (url) => {
   uni.previewImage({
     current: getImageUrl(url),

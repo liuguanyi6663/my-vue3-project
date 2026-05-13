@@ -617,6 +617,7 @@ const initDatabase = async () => {
 
     console.log('✅ 数据库表初始化完成')
 
+    await seedAdminUser()
     await seedNationalLines()
   } catch (err) {
     console.error('❌ 数据库初始化失败:', err.message)
@@ -821,6 +822,29 @@ async function seedSchoolWebsites() {
     console.log(`✅ 学校官网数据初始化完成，共插入 ${schools.length} 条记录`)
   } catch (err) {
     console.error('❌ 学校官网数据初始化失败:', err.message)
+  }
+}
+
+async function seedAdminUser() {
+  try {
+    const bcrypt = require('bcrypt')
+    const adminPhone = '15900000000'
+    const existing = await db.query('SELECT id FROM users WHERE phone = ? OR username = ?', [adminPhone, 'admin'])
+    if (existing.length > 0) {
+      console.log('👤 超级管理员账号已存在，跳过创建')
+      return
+    }
+
+    const hashedPassword = await bcrypt.hash('admin123', 10)
+    await db.query(
+      `INSERT INTO users (username, password, phone, nickname, role, status)
+       VALUES (?, ?, ?, ?, 'super_admin', 1)`,
+      ['admin', hashedPassword, adminPhone, '超级管理员']
+    )
+    console.log('✅ 超级管理员账号已创建（手机号: 15900000000，密码: admin123）')
+    console.log('⚠️  请在生产环境中立即修改默认密码！')
+  } catch (err) {
+    console.error('❌ 超级管理员创建失败:', err.message)
   }
 }
 
